@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent,
 } from 'react'
@@ -12,6 +13,7 @@ import { getBranchLabel } from '../types/discussion'
 
 type Point = { x: number; y: number }
 type Viewport = Point & { scale: number }
+type NodeEditDraft = { id: string; title: string; body: string }
 
 type TreeViewProps = {
   topic: string
@@ -54,12 +56,15 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
   const canvasRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ id: string; startPointer: Point; startNode: Point } | null>(null)
   const panRef = useRef<{ startPointer: Point; startViewport: Point } | null>(null)
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [positions, setPositions] = useState<Record<string, Point>>(() => buildInitialPositions(contributions))
   const [viewport, setViewport] = useState<Viewport>({ x: 20, y: 20, scale: 0.82 })
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
   const [newNodeParent, setNewNodeParent] = useState<string | null | undefined>(undefined)
   const [newTitle, setNewTitle] = useState('')
   const [newBody, setNewBody] = useState('')
+  const [editDraft, setEditDraft] = useState<NodeEditDraft | null>(null)
+  const [isInteracting, setIsInteracting] = useState(false)
 
   const resolvedPositions = useMemo(
     () => ({ ...buildInitialPositions(contributions), ...positions }),
@@ -91,9 +96,17 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
 
   const visibleContributions = contributions.filter((item) => !hiddenIds.has(item.id))
 
+  useEffect(() => {
+    const textarea = editTextareaRef.current
+    if (!textarea || !editDraft) return
+    textarea.style.height = '0px'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [editDraft])
+
   const stopInteraction = useCallback(() => {
     dragRef.current = null
     panRef.current = null
+    setIsInteracting(false)
   }, [])
 
   useEffect(() => {
@@ -111,6 +124,7 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
       startPointer: { x: event.clientX, y: event.clientY },
       startViewport: { x: viewport.x, y: viewport.y },
     }
+    setIsInteracting(true)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
@@ -144,6 +158,7 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
       startPointer: { x: event.clientX, y: event.clientY },
       startNode: resolvedPositions[id] ?? { x: 0, y: 0 },
     }
+    setIsInteracting(true)
   }
 
   function handleWheel(event: WheelEvent<HTMLDivElement>) {
@@ -190,6 +205,31 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
     setNewNodeParent(undefined)
   }
 
+  function startEditing(item: Contribution) {
+    setEditDraft({ id: item.id, title: item.title ?? '', body: item.body })
+  }
+
+  function saveEditing() {
+    if (!editDraft) return
+    onUpdateContribution(editDraft.id, {
+      title: editDraft.title.trim(),
+      body: editDraft.body.trim(),
+    })
+    setEditDraft(null)
+  }
+
+  function handleEditKeyDown(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setEditDraft(null)
+      return
+    }
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      saveEditing()
+    }
+  }
+
   return (
     <div className="tree-shell">
       <header className="tree-header">
@@ -219,7 +259,7 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
           onPointerUp={stopInteraction}
           onWheel={handleWheel}
         >
-          <div className="canvas-instructions">Drag to pan · Scroll to zoom</div>
+          <div className="canvas-instructions">Drag to pan · Scroll to zoom · Double-click to edit</div>
           <div className="canvas-controls">
             <button type="button" onClick={() => zoomBy(0.12)} aria-label="Zoom in">+</button>
             <span>{Math.round(viewport.scale * 100)}%</span>
@@ -227,7 +267,7 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
             <button type="button" onClick={resetView} aria-label="Reset view">⌂</button>
           </div>
 
-          <div className="canvas-world" style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}>
+          <div className={`canvas-world${isInteracting ? ' canvas-world--interacting' : ''}`} style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}>
             <svg className="node-edges" width="1800" height="1200" aria-hidden="true">
               {visibleContributions.map((item) => {
                 if (!item.parentId || hiddenIds.has(item.parentId)) return null
@@ -243,6 +283,11 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
               })}
             </svg>
 
+            {visibleContributions.length === 0 && (
+              <button type="button" className="canvas-empty-state" onClick={() => openCreateNode(null)}>
+                <span>＋</span><strong>Start the discussion map</strong><small>Create the first branch, then add connected ideas.</small>
+              </button>
+            )}
             {visibleContributions.map((item) => {
               const point = resolvedPositions[item.id] ?? { x: 0, y: 0 }
               const children = childrenByParent.get(item.id) ?? []
@@ -250,28 +295,43 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
               return (
                 <article
                   key={item.id}
-                  className={`discussion-node${item.parentId === null ? ' discussion-node--root' : ''}`}
+                  className={`discussion-node discussion-node--${item.relation}${item.parentId === null ? ' discussion-node--root' : ''}`}
                   style={{ transform: `translate(${point.x}px, ${point.y}px)`, width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
                   onPointerDown={(event) => handleNodePointerDown(event, item.id)}
+                  onDoubleClick={() => startEditing(item)}
                 >
                   <div className="discussion-node__topline">
                     <span className={`relation-pill relation-pill--${item.relation}`}>{item.parentId === null ? 'Branch' : item.relation}</span>
                     <span className="discussion-node__drag" aria-hidden="true">⠿</span>
                   </div>
-                  <input
-                    className="discussion-node__title"
-                    value={item.title ?? ''}
-                    placeholder={item.kind === 'branch' ? getBranchLabel(item) || 'Branch title' : 'Idea title'}
-                    onChange={(event) => onUpdateContribution(item.id, { title: event.target.value, body: item.body })}
-                    aria-label="Node title"
-                  />
-                  <textarea
-                    className="discussion-node__body"
-                    value={item.body}
-                    placeholder="Add details…"
-                    onChange={(event) => onUpdateContribution(item.id, { title: item.title, body: event.target.value })}
-                    aria-label="Node content"
-                  />
+                  {editDraft?.id === item.id ? (
+                    <div className="discussion-node__editor">
+                      <input
+                        autoFocus
+                        className="discussion-node__title"
+                        value={editDraft.title}
+                        placeholder="Idea title"
+                        onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })}
+                        onKeyDown={handleEditKeyDown}
+                        aria-label="Node title"
+                      />
+                      <textarea
+                        ref={editTextareaRef}
+                        className="discussion-node__body"
+                        value={editDraft.body}
+                        placeholder="Add details…"
+                        onChange={(event) => setEditDraft({ ...editDraft, body: event.target.value })}
+                        onKeyDown={handleEditKeyDown}
+                        aria-label="Node content"
+                      />
+                      <span className="discussion-node__edit-hint">Enter to save · Shift+Enter for a new line · Esc to cancel</span>
+                    </div>
+                  ) : (
+                    <div className="discussion-node__copy">
+                      <h2>{item.title?.trim() || (item.kind === 'branch' ? getBranchLabel(item) : 'Untitled idea')}</h2>
+                      {item.body ? <p>{item.body}</p> : <p className="discussion-node__empty">Double-click to add details</p>}
+                    </div>
+                  )}
                   <div className="discussion-node__footer">
                     <span className="node-author"><span>{item.author.slice(0, 1)}</span>{item.author}</span>
                     <div>
@@ -292,6 +352,19 @@ export function TreeView({ topic, contributions, onUpdateContribution, onAddNode
                       )}
                       <button type="button" className="node-action node-action--add" onClick={() => openCreateNode(item.id)} aria-label="Create child node">+</button>
                     </div>
+                  </div>
+                  <div className="discussion-node__hover-toolbar" aria-label="Node actions">
+                    {editDraft?.id === item.id ? (
+                      <>
+                        <button type="button" onClick={saveEditing}>Save</button>
+                        <button type="button" onClick={() => setEditDraft(null)}>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => startEditing(item)}>Edit</button>
+                        <button type="button" onClick={() => openCreateNode(item.id)}>+ Child</button>
+                      </>
+                    )}
                   </div>
                 </article>
               )

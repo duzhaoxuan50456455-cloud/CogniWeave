@@ -1,4 +1,4 @@
-import { useEffect, useRef, type FormEvent } from 'react'
+import { useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react'
 import type { Contribution } from '../types/discussion'
 
 type ChatViewProps = {
@@ -32,10 +32,22 @@ function formatMessageTime(createdAt: number): string {
     return `9:${String(minutes).padStart(2, '0')} AM`
   }
 
+  const date = new Date(createdAt)
+  const today = new Date()
+  const isToday = date.toDateString() === today.toDateString()
   return new Intl.DateTimeFormat(undefined, {
+    ...(isToday ? {} : { month: 'short', day: 'numeric' }),
     hour: 'numeric',
     minute: '2-digit',
   }).format(createdAt)
+}
+
+function isGroupedWith(message: Contribution, neighbor: Contribution | undefined): boolean {
+  return Boolean(
+    neighbor &&
+    neighbor.author === message.author &&
+    Math.abs(neighbor.createdAt - message.createdAt) < 5 * 60 * 1000,
+  )
 }
 
 export function ChatView({
@@ -47,10 +59,25 @@ export function ChatView({
   onBack,
 }: ChatViewProps) {
   const threadEndRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
+
+  useEffect(() => {
+    const textarea = composerRef.current
+    if (!textarea) return
+    textarea.style.height = '0px'
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 128)}px`
+  }, [messageDraft])
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      if (messageDraft.trim()) event.currentTarget.form?.requestSubmit()
+    }
+  }
 
   return (
     <div className="chat-shell">
@@ -79,11 +106,16 @@ export function ChatView({
 
         <div className="chat-thread" role="log" aria-live="polite" aria-label="Discussion messages">
           <div className="date-divider"><span>Today</span></div>
-          {messages.map((message) => {
+          {messages.map((message, index) => {
             const isYou = message.author === 'You'
+            const joinsPrevious = isGroupedWith(message, messages[index - 1])
+            const joinsNext = isGroupedWith(message, messages[index + 1])
             return (
-              <article key={message.id} className={`chat-message${isYou ? ' chat-message--you' : ''}`}>
-                {!isYou && (
+              <article
+                key={message.id}
+                className={`chat-message${isYou ? ' chat-message--you' : ''}${joinsPrevious ? ' chat-message--continued' : ''}${joinsNext ? ' chat-message--continues' : ''}`}
+              >
+                {!isYou && !joinsNext && (
                   <div
                     className="avatar"
                     style={{ background: AVATAR_COLORS[message.author] ?? '#64748b' }}
@@ -92,18 +124,20 @@ export function ChatView({
                     {initials(message.author)}
                   </div>
                 )}
+                {!isYou && joinsNext && <div className="avatar-spacer" aria-hidden="true" />}
                 <div className="chat-message__content">
-                  <div className="chat-message__meta">
+                  {!joinsPrevious && <div className="chat-message__meta">
                     <span className="chat-message__author">{isYou ? 'You' : message.author}</span>
-                    <time>{formatMessageTime(message.createdAt)}</time>
-                  </div>
+                    <time dateTime={new Date(message.createdAt).toISOString()}>{formatMessageTime(message.createdAt)}</time>
+                  </div>}
                   <div className="chat-message__bubble">
                     <p>{message.body}</p>
                   </div>
                 </div>
-                {isYou && (
+                {isYou && !joinsNext && (
                   <div className="avatar avatar--you" aria-label="Your avatar">YO</div>
                 )}
+                {isYou && joinsNext && <div className="avatar-spacer" aria-hidden="true" />}
               </article>
             )
           })}
@@ -120,11 +154,13 @@ export function ChatView({
       <form className="chat-composer" onSubmit={onSendMessage}>
         <div className="chat-composer__inner">
           <button type="button" className="composer-action" aria-label="Add attachment">+</button>
-          <input
-            type="text"
+          <textarea
+            ref={composerRef}
+            rows={1}
             placeholder="Message the discussion…"
             value={messageDraft}
             onChange={(event) => onMessageDraftChange(event.target.value)}
+            onKeyDown={handleComposerKeyDown}
             aria-label="Message"
           />
           <button
