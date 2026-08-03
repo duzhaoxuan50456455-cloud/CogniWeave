@@ -11,6 +11,8 @@ export type ContributionKind = 'message' | 'branch' | 'idea'
 
 export type RelationType = 'idea' | 'support' | 'challenge' | 'question'
 
+export type ReactionEmoji = '👍' | '💡' | '❓' | '❤️'
+
 export type Contribution = {
   id: string
   kind: ContributionKind
@@ -20,6 +22,7 @@ export type Contribution = {
   parentId: string | null
   relation: RelationType
   createdAt: number
+  replyToId?: string | null
 }
 
 export type RecommendedMode = 'talk' | 'organize'

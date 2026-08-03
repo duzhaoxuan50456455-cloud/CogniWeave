@@ -13,6 +13,7 @@ import {
   type Contribution,
   type DiscussionReturnScreen,
   type RecommendedMode,
+  type ReactionEmoji,
   type Screen,
 } from './types/discussion'
 
@@ -24,6 +25,10 @@ function App() {
     createInitialContributions,
   )
   const [messageDraft, setMessageDraft] = useState('')
+  const [replyToId, setReplyToId] = useState<string | null>(null)
+  const [messageReactions, setMessageReactions] = useState<
+    Record<string, ReactionEmoji | undefined>
+  >({})
   const [quizSession, setQuizSession] = useState(0)
 
   const chatMessages = useMemo(
@@ -94,10 +99,22 @@ function App() {
         parentId: null,
         relation: 'idea',
         createdAt: Date.now(),
+        replyToId,
       },
     ])
     setMessageDraft('')
+    setReplyToId(null)
   }
+
+  const handleToggleReaction = useCallback(
+    (messageId: string, reaction: ReactionEmoji) => {
+      setMessageReactions((current) => ({
+        ...current,
+        [messageId]: current[messageId] === reaction ? undefined : reaction,
+      }))
+    },
+    [],
+  )
 
   const handleUpdateContribution = useCallback(
     (id: string, changes: Pick<Contribution, 'title' | 'body'>) => {
@@ -166,7 +183,11 @@ function App() {
           topic={DISCUSSION_TOPIC}
           messages={chatMessages}
           messageDraft={messageDraft}
+          replyToId={replyToId}
+          reactions={messageReactions}
           onMessageDraftChange={setMessageDraft}
+          onReplyToChange={setReplyToId}
+          onToggleReaction={handleToggleReaction}
           onSendMessage={handleSendMessage}
           onBack={goBackFromDiscussion}
         />
