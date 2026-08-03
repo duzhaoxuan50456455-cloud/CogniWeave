@@ -1,4 +1,4 @@
-import { type FormEvent } from 'react'
+import { useEffect, useRef, type FormEvent } from 'react'
 import type { Contribution } from '../types/discussion'
 
 type ChatViewProps = {
@@ -10,6 +10,34 @@ type ChatViewProps = {
   onBack: () => void
 }
 
+const AVATAR_COLORS: Record<string, string> = {
+  Emily: '#2563eb',
+  Jack: '#7c3aed',
+  Amy: '#0891b2',
+  You: '#1d4ed8',
+}
+
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function formatMessageTime(createdAt: number): string {
+  if (createdAt < 1_000_000_000_000) {
+    const minutes = 41 + Math.max(0, Math.floor((createdAt - 1_000) / 1_000))
+    return `9:${String(minutes).padStart(2, '0')} AM`
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(createdAt)
+}
+
 export function ChatView({
   topic,
   messages,
@@ -18,52 +46,97 @@ export function ChatView({
   onSendMessage,
   onBack,
 }: ChatViewProps) {
+  const threadEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length])
+
   return (
-    <div className="app">
-      <header className="shell-header">
-        <h1 className="shell-header__brand">CogniWeave</h1>
-        <button type="button" className="shell-header__back" onClick={onBack}>
-          Back
+    <div className="chat-shell">
+      <header className="discussion-header">
+        <button type="button" className="icon-button" onClick={onBack} aria-label="Go back">
+          <span aria-hidden="true">←</span>
         </button>
+        <div className="discussion-header__identity">
+          <div className="discussion-header__mark" aria-hidden="true">C</div>
+          <div>
+            <h1 className="discussion-header__title">CogniWeave</h1>
+            <p className="discussion-header__status">
+              <span className="status-dot" /> 4 participants online
+            </p>
+          </div>
+        </div>
+        <button type="button" className="icon-button" aria-label="Conversation options">•••</button>
       </header>
 
-      <div className="screen-body">
-        <p className="topic">
-          <span className="topic__label">Discussion topic</span>
-          {topic}
-        </p>
+      <main className="chat-main">
+        <div className="chat-topic">
+          <span className="chat-topic__eyebrow">Today’s discussion</span>
+          <h2>{topic}</h2>
+          <p>Share a thought, build on an idea, or challenge the group.</p>
+        </div>
 
-        <ul className="message-list">
-          {messages.map((message) => (
-            <li
-              key={message.id}
-              className={
-                message.author === 'You' ? 'message message--you' : 'message'
-              }
-            >
-              <div className="message__meta">
-                <p className="message__author">{message.author}</p>
-                <p className="message__relation">{message.relation}</p>
-              </div>
-              <p className="message__text">{message.body}</p>
-            </li>
-          ))}
-        </ul>
+        <div className="chat-thread" role="log" aria-live="polite" aria-label="Discussion messages">
+          <div className="date-divider"><span>Today</span></div>
+          {messages.map((message) => {
+            const isYou = message.author === 'You'
+            return (
+              <article key={message.id} className={`chat-message${isYou ? ' chat-message--you' : ''}`}>
+                {!isYou && (
+                  <div
+                    className="avatar"
+                    style={{ background: AVATAR_COLORS[message.author] ?? '#64748b' }}
+                    aria-label={`${message.author}'s avatar`}
+                  >
+                    {initials(message.author)}
+                  </div>
+                )}
+                <div className="chat-message__content">
+                  <div className="chat-message__meta">
+                    <span className="chat-message__author">{isYou ? 'You' : message.author}</span>
+                    <time>{formatMessageTime(message.createdAt)}</time>
+                  </div>
+                  <div className="chat-message__bubble">
+                    <p>{message.body}</p>
+                  </div>
+                </div>
+                {isYou && (
+                  <div className="avatar avatar--you" aria-label="Your avatar">YO</div>
+                )}
+              </article>
+            )
+          })}
 
-        <form className="composer" onSubmit={onSendMessage}>
+          <div className="typing-row" aria-label="Amy is typing">
+            <div className="avatar avatar--small" style={{ background: AVATAR_COLORS.Amy }}>A</div>
+            <div className="typing-bubble" aria-hidden="true"><i /><i /><i /></div>
+            <span>Amy is typing</span>
+          </div>
+          <div ref={threadEndRef} />
+        </div>
+      </main>
+
+      <form className="chat-composer" onSubmit={onSendMessage}>
+        <div className="chat-composer__inner">
+          <button type="button" className="composer-action" aria-label="Add attachment">+</button>
           <input
             type="text"
-            className="composer__input"
-            placeholder="Add your message…"
+            placeholder="Message the discussion…"
             value={messageDraft}
             onChange={(event) => onMessageDraftChange(event.target.value)}
             aria-label="Message"
           />
-          <button type="submit" className="composer__submit">
-            Send
+          <button
+            type="submit"
+            className="send-button"
+            disabled={!messageDraft.trim()}
+            aria-label="Send message"
+          >
+            <span aria-hidden="true">↑</span>
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }

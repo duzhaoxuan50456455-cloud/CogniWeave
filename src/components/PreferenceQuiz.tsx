@@ -1,37 +1,47 @@
 import { useMemo, useState } from 'react'
 import type { RecommendedMode } from '../types/discussion'
 
-type QuizChoice = 'A' | 'B'
+type QuizChoice = 'talk' | 'organize'
+
+type QuizOption = {
+  mode: QuizChoice
+  label: string
+  description: string
+  icon: string
+}
 
 type QuizQuestion = {
   prompt: string
-  choiceA: string
-  choiceB: string
+  supportingText: string
+  options: [QuizOption, QuizOption]
 }
 
 const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
-    prompt: 'When working through a complex idea, what feels more natural?',
-    choiceA: 'Expressing ideas as they form',
-    choiceB: 'Organizing ideas before sharing them',
+    prompt: 'How do your best ideas usually take shape?',
+    supportingText: 'Think about what feels natural when a topic is still new.',
+    options: [
+      { mode: 'talk', icon: '💬', label: 'I think out loud', description: 'The back-and-forth helps me discover what I mean.' },
+      { mode: 'organize', icon: '◇', label: 'I map things out', description: 'I understand more when I can arrange ideas first.' },
+    ],
   },
   {
-    prompt: 'In a fast-moving group conversation, how do you usually feel?',
-    choiceA: 'Energized by the back-and-forth',
-    choiceB: 'I need more time and structure',
+    prompt: 'What helps you follow a lively group discussion?',
+    supportingText: 'Choose the experience that keeps you most engaged.',
+    options: [
+      { mode: 'talk', icon: '⚡', label: 'A flowing conversation', description: 'I like responding in the moment as ideas arrive.' },
+      { mode: 'organize', icon: '⌘', label: 'A visible structure', description: 'I want to see each thread and how it connects.' },
+    ],
   },
   {
-    prompt: 'For a complicated discussion, what helps you understand it?',
-    choiceA: 'Reading the conversation chronologically',
-    choiceB: 'Seeing how the ideas relate visually',
+    prompt: 'When a discussion gets complex, what do you reach for?',
+    supportingText: 'There is no wrong answer—pick what would help today.',
+    options: [
+      { mode: 'talk', icon: '→', label: 'The conversation history', description: 'A clear timeline lets me retrace how we got here.' },
+      { mode: 'organize', icon: '⑂', label: 'A visual overview', description: 'Branches and connections help me see the whole picture.' },
+    ],
   },
 ]
-
-function scoreRecommendation(answers: QuizChoice[]): RecommendedMode {
-  const aCount = answers.filter((answer) => answer === 'A').length
-  const bCount = answers.length - aCount
-  return bCount > aCount ? 'organize' : 'talk'
-}
 
 type PreferenceQuizProps = {
   onBack: () => void
@@ -39,108 +49,97 @@ type PreferenceQuizProps = {
   onChooseAnother: () => void
 }
 
-export function PreferenceQuiz({
-  onBack,
-  onUseRecommended,
-  onChooseAnother,
-}: PreferenceQuizProps) {
+export function PreferenceQuiz({ onBack, onUseRecommended, onChooseAnother }: PreferenceQuizProps) {
   const [stepIndex, setStepIndex] = useState(0)
-  const [answers, setAnswers] = useState<QuizChoice[]>([])
+  const [answers, setAnswers] = useState<Array<QuizChoice | undefined>>([])
+  const isComplete = stepIndex === QUIZ_QUESTIONS.length
+  const selectedAnswer = answers[stepIndex]
 
-  const isComplete = stepIndex >= QUIZ_QUESTIONS.length
-  const recommendedMode = useMemo(
-    () => (isComplete ? scoreRecommendation(answers) : null),
-    [answers, isComplete],
-  )
+  const recommendedMode = useMemo<RecommendedMode>(() => {
+    const organizeScore = answers.filter((answer) => answer === 'organize').length
+    return organizeScore >= 2 ? 'organize' : 'talk'
+  }, [answers])
 
-  function handleChoice(choice: QuizChoice) {
-    const nextAnswers = [...answers, choice]
-    setAnswers(nextAnswers)
-    setStepIndex(nextAnswers.length)
+  function chooseAnswer(choice: QuizChoice) {
+    setAnswers((current) => {
+      const next = [...current]
+      next[stepIndex] = choice
+      return next
+    })
   }
 
-  const resultText =
-    recommendedMode === 'organize'
-      ? 'You may prefer Organize mode right now.'
-      : 'You may prefer Talk mode right now.'
+  function goPrevious() {
+    if (stepIndex === 0) onBack()
+    else setStepIndex((current) => current - 1)
+  }
+
+  function goNext() {
+    if (selectedAnswer) setStepIndex((current) => current + 1)
+  }
+
+  const resultIsTree = recommendedMode === 'organize'
 
   return (
     <main className="preference-quiz">
-      <div className="preference-quiz__toolbar">
-        <button type="button" className="shell-header__back" onClick={onBack}>
-          Back
-        </button>
+      <div className="quiz-topbar">
+        <button type="button" className="quiz-back" onClick={isComplete ? onBack : goPrevious}>← Back</button>
+        <span className="quiz-brand"><span>C</span> CogniWeave</span>
+        <span className="quiz-topbar__spacer" />
       </div>
 
-      <header className="preference-quiz__header">
-        <h1 className="preference-quiz__title">Help me choose</h1>
-        <p className="preference-quiz__subtitle">
-          Three quick questions about how you like to discuss.
-        </p>
-      </header>
-
-      <div className="preference-quiz__panel">
-        {!isComplete && (
-          <>
-            <p className="preference-quiz__progress">
-              Question {stepIndex + 1} of {QUIZ_QUESTIONS.length}
-            </p>
-            <p className="preference-quiz__question">
-              {QUIZ_QUESTIONS[stepIndex].prompt}
-            </p>
-            <ul className="preference-quiz__choices">
-              <li>
-                <button
-                  type="button"
-                  className="preference-quiz__choice"
-                  onClick={() => handleChoice('A')}
-                >
-                  <p className="preference-quiz__choice-label">
-                    {QUIZ_QUESTIONS[stepIndex].choiceA}
-                  </p>
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className="preference-quiz__choice"
-                  onClick={() => handleChoice('B')}
-                >
-                  <p className="preference-quiz__choice-label">
-                    {QUIZ_QUESTIONS[stepIndex].choiceB}
-                  </p>
-                </button>
-              </li>
-            </ul>
-          </>
-        )}
-
-        {isComplete && recommendedMode !== null && (
-          <>
-            <p className="preference-quiz__result">{resultText}</p>
-            <p className="preference-quiz__disclaimer">
-              This is a provisional preference check, not a psychological
-              assessment.
-            </p>
-            <div className="preference-quiz__actions">
+      {!isComplete ? (
+        <section className="quiz-card" aria-labelledby="quiz-question">
+          <div className="quiz-progress-row">
+            <span>Question {stepIndex + 1} of {QUIZ_QUESTIONS.length}</span>
+            <span>{Math.round(((stepIndex + 1) / QUIZ_QUESTIONS.length) * 100)}%</span>
+          </div>
+          <div className="quiz-progress-track"><span style={{ width: `${((stepIndex + 1) / QUIZ_QUESTIONS.length) * 100}%` }} /></div>
+          <div className="quiz-copy">
+            <span className="quiz-kicker">Find your flow</span>
+            <h1 id="quiz-question">{QUIZ_QUESTIONS[stepIndex].prompt}</h1>
+            <p>{QUIZ_QUESTIONS[stepIndex].supportingText}</p>
+          </div>
+          <div className="quiz-options">
+            {QUIZ_QUESTIONS[stepIndex].options.map((option) => (
               <button
                 type="button"
-                className="preference-quiz__primary"
-                onClick={() => onUseRecommended(recommendedMode)}
+                key={option.mode}
+                className={`quiz-option${selectedAnswer === option.mode ? ' quiz-option--selected' : ''}`}
+                onClick={() => chooseAnswer(option.mode)}
+                aria-pressed={selectedAnswer === option.mode}
               >
-                Use recommended view
+                <span className="quiz-option__icon" aria-hidden="true">{option.icon}</span>
+                <span className="quiz-option__copy"><strong>{option.label}</strong><small>{option.description}</small></span>
+                <span className="quiz-option__radio" aria-hidden="true" />
               </button>
-              <button
-                type="button"
-                className="preference-quiz__secondary"
-                onClick={onChooseAnother}
-              >
-                Choose another view
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+            ))}
+          </div>
+          <button type="button" className="quiz-next" onClick={goNext} disabled={!selectedAnswer}>
+            {stepIndex === QUIZ_QUESTIONS.length - 1 ? 'See my recommendation' : 'Next question'} <span>→</span>
+          </button>
+        </section>
+      ) : (
+        <section className="quiz-card quiz-result" aria-labelledby="quiz-result-title">
+          <div className="quiz-result__icon" aria-hidden="true">{resultIsTree ? '⑂' : '💬'}</div>
+          <span className="quiz-kicker">Your recommended mode</span>
+          <h1 id="quiz-result-title">{resultIsTree ? 'Tree mode' : 'Talk mode'}</h1>
+          <p>
+            {resultIsTree
+              ? 'You prefer seeing the big picture. Tree mode keeps ideas organized, connected, and easy to revisit.'
+              : 'You build clarity through conversation. Talk mode keeps ideas moving in a natural, responsive flow.'}
+          </p>
+          <div className="quiz-result__traits">
+            <span>{resultIsTree ? 'Visual structure' : 'Natural flow'}</span>
+            <span>{resultIsTree ? 'Connected ideas' : 'Quick responses'}</span>
+            <span>{resultIsTree ? 'Flexible pace' : 'Shared momentum'}</span>
+          </div>
+          <button type="button" className="quiz-next" onClick={() => onUseRecommended(recommendedMode)}>
+            Open {resultIsTree ? 'Tree' : 'Talk'} mode <span>→</span>
+          </button>
+          <button type="button" className="quiz-alternative" onClick={onChooseAnother}>Choose a different mode</button>
+          <small className="quiz-disclaimer">A helpful preference, not a permanent label. Switch modes anytime.</small>
+        </section>
+      )}
     </main>
   )
 }

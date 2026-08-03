@@ -24,7 +24,6 @@ function App() {
     createInitialContributions,
   )
   const [messageDraft, setMessageDraft] = useState('')
-  const [branchDraft, setBranchDraft] = useState('')
   const [quizSession, setQuizSession] = useState(0)
 
   const chatMessages = useMemo(
@@ -36,19 +35,10 @@ function App() {
     [contributions],
   )
 
-  const treeBranches = useMemo(
+  const treeContributions = useMemo(
     () =>
       contributions
-        .filter((c) => c.kind === 'branch')
-        .slice()
-        .sort(sortByCreatedAt),
-    [contributions],
-  )
-
-  const getIdeasForBranch = useCallback(
-    (branchId: string): Contribution[] =>
-      contributions
-        .filter((c) => c.kind === 'idea' && c.parentId === branchId)
+        .filter((c) => c.kind !== 'message')
         .slice()
         .sort(sortByCreatedAt),
     [contributions],
@@ -109,38 +99,36 @@ function App() {
     setMessageDraft('')
   }
 
-  function handleAddBranch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const title = branchDraft.trim()
-    if (!title) return
+  const handleUpdateContribution = useCallback(
+    (id: string, changes: Pick<Contribution, 'title' | 'body'>) => {
+      setContributions((prev) =>
+        prev.map((contribution) =>
+          contribution.id === id ? { ...contribution, ...changes } : contribution,
+        ),
+      )
+    },
+    [],
+  )
 
-    const branchId = createId('contrib')
-    const now = Date.now()
-
-    setContributions((prev) => [
-      ...prev,
-      {
-        id: branchId,
-        kind: 'branch',
-        author: 'You',
-        title,
-        body: '',
-        parentId: null,
-        relation: 'idea',
-        createdAt: now,
-      },
-      {
-        id: createId('contrib'),
-        kind: 'idea',
-        author: 'You',
-        body: 'New ideas can grow from this branch.',
-        parentId: branchId,
-        relation: 'idea',
-        createdAt: now + 1,
-      },
-    ])
-    setBranchDraft('')
-  }
+  const handleAddTreeNode = useCallback(
+    (parentId: string | null, title: string, body: string) => {
+      const isRoot = parentId === null
+      setContributions((prev) => [
+        ...prev,
+        {
+          id: createId('contrib'),
+          kind: isRoot ? 'branch' : 'idea',
+          author: 'You',
+          title: title.trim(),
+          body: body.trim(),
+          parentId,
+          relation: 'idea',
+          createdAt: Date.now(),
+        },
+      ])
+    },
+    [],
+  )
 
   return (
     <>
@@ -187,11 +175,9 @@ function App() {
       {screen === 'tree' && (
         <TreeView
           topic={DISCUSSION_TOPIC}
-          branches={treeBranches}
-          getIdeasForBranch={getIdeasForBranch}
-          branchDraft={branchDraft}
-          onBranchDraftChange={setBranchDraft}
-          onAddBranch={handleAddBranch}
+          contributions={treeContributions}
+          onUpdateContribution={handleUpdateContribution}
+          onAddNode={handleAddTreeNode}
           onBack={goBackFromDiscussion}
         />
       )}
