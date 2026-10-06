@@ -6,7 +6,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react'
-import type { Contribution, ReactionEmoji } from '../types/discussion'
+import type { Contribution, ReactionEmoji, ReplyRelation } from '../types/discussion'
 import { ConversationMap } from './ConversationMap'
 
 type ChatViewProps = {
@@ -14,12 +14,14 @@ type ChatViewProps = {
   messages: Contribution[]
   messageDraft: string
   replyToId: string | null
+  replyRelation: ReplyRelation
   reactions: Record<string, ReactionEmoji | undefined>
   isMapVisible: boolean
   selectedMessageId: string | null
   selectionSource: 'chat' | 'map' | null
   onMessageDraftChange: (value: string) => void
   onReplyToChange: (messageId: string | null) => void
+  onReplyRelationChange: (relation: ReplyRelation) => void
   onToggleReaction: (messageId: string, reaction: ReactionEmoji) => void
   onToggleMap: () => void
   onSelectMessage: (messageId: string, source: 'chat' | 'map') => void
@@ -28,6 +30,14 @@ type ChatViewProps = {
 }
 
 const REACTIONS: readonly ReactionEmoji[] = ['👍', '💡', '❓', '❤️']
+const REPLY_RELATIONS: readonly ReplyRelation[] = ['reply', 'support', 'challenge', 'question']
+
+const RELATION_LABELS: Record<ReplyRelation, string> = {
+  reply: 'Reply',
+  support: 'Support',
+  challenge: 'Challenge',
+  question: 'Question',
+}
 
 const AVATAR_COLORS: Record<string, string> = {
   Emily: '#2563eb',
@@ -74,12 +84,14 @@ export function ChatView({
   messages,
   messageDraft,
   replyToId,
+  replyRelation,
   reactions,
   isMapVisible,
   selectedMessageId,
   selectionSource,
   onMessageDraftChange,
   onReplyToChange,
+  onReplyRelationChange,
   onToggleReaction,
   onToggleMap,
   onSelectMessage,
@@ -191,6 +203,13 @@ export function ChatView({
     setMessageReactionTarget(null)
   }
 
+  function startReply(messageId: string) {
+    onReplyToChange(messageId)
+    onReplyRelationChange('reply')
+    setMessageReactionTarget(null)
+    requestAnimationFrame(() => composerRef.current?.focus())
+  }
+
   return (
     <div className="chat-shell">
       <header className="discussion-header">
@@ -232,7 +251,9 @@ export function ChatView({
             const isYou = message.author === 'You'
             const joinsPrevious = isGroupedWith(message, messages[index - 1])
             const joinsNext = isGroupedWith(message, messages[index + 1])
-            const quotedMessage = message.replyToId ? messagesById.get(message.replyToId) : undefined
+            const explicitParentId = message.replyToId ?? message.parentId
+            const quotedMessage = explicitParentId ? messagesById.get(explicitParentId) : undefined
+            const messageReplyRelation = message.replyRelation ?? 'reply'
             const selectedReaction = reactions[message.id]
 
             return (
@@ -258,7 +279,7 @@ export function ChatView({
                   </div>}
                   <div className="chat-message__bubble-wrap" data-chat-popover-open={messageReactionTarget === message.id}>
                     <div className="chat-message__actions">
-                      <button type="button" onClick={() => { onReplyToChange(message.id); setMessageReactionTarget(null) }} aria-label={`Reply to ${message.author}`} title={`Reply to ${message.author}`}>↩</button>
+                      <button type="button" onClick={() => startReply(message.id)} aria-label={`Reply to ${message.author}`} title={`Reply to ${message.author}`}>↩</button>
                       <button
                         type="button"
                         onClick={() => { setComposerMenu(null); setMessageReactionTarget((current) => current === message.id ? null : message.id) }}
@@ -291,7 +312,12 @@ export function ChatView({
                     >
                       {quotedMessage && (
                         <div className="reply-quote">
-                          <strong>{quotedMessage.author}</strong>
+                          <strong>
+                            <span className={`reply-relation reply-relation--${messageReplyRelation}`}>
+                              {RELATION_LABELS[messageReplyRelation]}
+                            </span>
+                            Replying to {quotedMessage.author}
+                          </strong>
                           <span>{quotedMessage.body}</span>
                         </div>
                       )}
@@ -328,8 +354,25 @@ export function ChatView({
       <form className="chat-composer" onSubmit={handleSubmit}>
         {replyTarget && (
           <div className="reply-preview">
-            <div><span>Replying to <strong>{replyTarget.author}</strong></span><p>{replyTarget.body}</p></div>
-            <button type="button" onClick={() => onReplyToChange(null)} aria-label="Cancel reply" title="Cancel reply">×</button>
+            <div className="reply-preview__content">
+              <span>Replying to <strong>{replyTarget.author}</strong></span>
+              <p>{replyTarget.body}</p>
+              <div className="reply-relation-selector" role="group" aria-label="Reply relationship">
+                <span>Reply as</span>
+                {REPLY_RELATIONS.map((relation) => (
+                  <button
+                    type="button"
+                    key={relation}
+                    className={`reply-relation reply-relation--${relation}`}
+                    onClick={() => onReplyRelationChange(relation)}
+                    aria-pressed={replyRelation === relation}
+                  >
+                    {RELATION_LABELS[relation]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button type="button" onClick={() => { onReplyToChange(null); onReplyRelationChange('reply') }} aria-label="Cancel reply" title="Cancel reply">×</button>
           </div>
         )}
         <div className="chat-composer__inner">

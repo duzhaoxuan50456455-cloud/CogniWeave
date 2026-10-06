@@ -13,6 +13,8 @@ export type RelationType = 'idea' | 'support' | 'challenge' | 'question'
 
 export type ReactionEmoji = '👍' | '💡' | '❓' | '❤️'
 
+export type ReplyRelation = 'reply' | 'support' | 'challenge' | 'question'
+
 export type Contribution = {
   id: string
   kind: ContributionKind
@@ -23,6 +25,7 @@ export type Contribution = {
   relation: RelationType
   createdAt: number
   replyToId?: string | null
+  replyRelation?: ReplyRelation
 }
 
 export type RecommendedMode = 'talk' | 'organize'
@@ -54,18 +57,42 @@ export function createInitialContributions(): Contribution[] {
       kind: 'message',
       author: 'Jack',
       body: 'I worry about over-reliance—universities should teach when to use AI and when to think without it.',
-      parentId: null,
+      parentId: 'contrib-emily-chat',
       relation: 'challenge',
       createdAt: 2_000,
+      replyToId: 'contrib-emily-chat',
+      replyRelation: 'challenge',
     },
     {
       id: 'contrib-amy-chat',
       kind: 'message',
       author: 'Amy',
       body: 'Maybe AI tutors handle drill practice while professors focus on debate, ethics, and creative projects.',
-      parentId: null,
+      parentId: 'contrib-emily-chat',
       relation: 'idea',
       createdAt: 3_000,
+      replyToId: 'contrib-emily-chat',
+      replyRelation: 'support',
+    },
+    {
+      id: 'contrib-nadia-chat',
+      kind: 'message',
+      author: 'Nadia',
+      body: 'How should students disclose when an AI tool helped shape an assignment?',
+      parentId: 'contrib-emily-chat',
+      relation: 'question',
+      createdAt: 3_500,
+      replyToId: 'contrib-emily-chat',
+      replyRelation: 'question',
+    },
+    {
+      id: 'contrib-priya-chat',
+      kind: 'message',
+      author: 'Priya',
+      body: 'Universities also need to decide how to protect student data used by AI platforms.',
+      parentId: null,
+      relation: 'idea',
+      createdAt: 3_750,
     },
     {
       id: 'contrib-branch-personalized',

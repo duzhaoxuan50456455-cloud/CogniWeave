@@ -11,6 +11,7 @@ import {
   type Contribution,
   type DiscussionReturnScreen,
   type ReactionEmoji,
+  type ReplyRelation,
   type Screen,
 } from './types/discussion'
 
@@ -23,6 +24,7 @@ function App() {
   )
   const [messageDraft, setMessageDraft] = useState('')
   const [replyToId, setReplyToId] = useState<string | null>(null)
+  const [replyRelation, setReplyRelation] = useState<ReplyRelation>('reply')
   const [messageReactions, setMessageReactions] = useState<
     Record<string, ReactionEmoji | undefined>
   >({})
@@ -80,10 +82,12 @@ function App() {
         relation: 'idea',
         createdAt: Date.now(),
         replyToId,
+        replyRelation: replyToId ? replyRelation : undefined,
       },
     ])
     setMessageDraft('')
     setReplyToId(null)
+    setReplyRelation('reply')
   }
 
   const handleToggleReaction = useCallback(
@@ -154,12 +158,14 @@ function App() {
           messages={chatMessages}
           messageDraft={messageDraft}
           replyToId={replyToId}
+          replyRelation={replyRelation}
           reactions={messageReactions}
           isMapVisible={isMapVisible}
           selectedMessageId={selectedMessageId}
           selectionSource={selectionSource}
           onMessageDraftChange={setMessageDraft}
           onReplyToChange={setReplyToId}
+          onReplyRelationChange={setReplyRelation}
           onToggleReaction={handleToggleReaction}
           onToggleMap={() => setIsMapVisible((visible) => !visible)}
           onSelectMessage={handleSelectMessage}

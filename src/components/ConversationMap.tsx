@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import type { Contribution } from '../types/discussion'
+import type { Contribution, ReplyRelation } from '../types/discussion'
 
 type Point = { x: number; y: number }
 
@@ -15,6 +15,13 @@ const NODE_HEIGHT = 68
 const NODE_X_GAP = 42
 const NODE_Y_GAP = 54
 
+const RELATION_LABELS: Record<ReplyRelation, string> = {
+  reply: 'Reply',
+  support: 'Support',
+  challenge: 'Challenge',
+  question: 'Question',
+}
+
 function getMessageParentId(message: Contribution, messagesById: Map<string, Contribution>): string | null {
   if (message.replyToId && messagesById.has(message.replyToId)) return message.replyToId
   if (message.parentId && messagesById.has(message.parentId)) return message.parentId
@@ -23,6 +30,10 @@ function getMessageParentId(message: Contribution, messagesById: Map<string, Con
 
 function excerpt(body: string): string {
   return body.length > 62 ? `${body.slice(0, 59)}…` : body
+}
+
+function getReplyRelation(message: Contribution): ReplyRelation {
+  return message.replyRelation ?? 'reply'
 }
 
 export function ConversationMap({
@@ -142,11 +153,12 @@ export function ConversationMap({
               const endX = childPosition.x + NODE_WIDTH / 2
               const endY = childPosition.y
               const controlY = startY + (endY - startY) / 2
+              const relation = getReplyRelation(message)
               return (
-                <path
-                  key={`${parentId}-${message.id}`}
-                  d={`M ${startX} ${startY} C ${startX} ${controlY}, ${endX} ${controlY}, ${endX} ${endY}`}
-                />
+                <g key={`${parentId}-${message.id}`} className={`conversation-map__edge conversation-map__edge--${relation}`}>
+                  <path d={`M ${startX} ${startY} C ${startX} ${controlY}, ${endX} ${controlY}, ${endX} ${endY}`} />
+                  <text x={(startX + endX) / 2} y={controlY - 5}>{RELATION_LABELS[relation]}</text>
+                </g>
               )
             })}
           </svg>
@@ -157,15 +169,15 @@ export function ConversationMap({
                 type="button"
                 key={message.id}
                 ref={(node) => { nodeRefs.current[message.id] = node }}
-                className={`conversation-map__node${parentIds.get(message.id) ? ' conversation-map__node--reply' : ' conversation-map__node--root'}${selectedMessageId === message.id ? ' conversation-map__node--selected' : ''}`}
+                className={`conversation-map__node${parentIds.get(message.id) ? ` conversation-map__node--reply conversation-map__node--${getReplyRelation(message)}` : ' conversation-map__node--root'}${selectedMessageId === message.id ? ' conversation-map__node--selected' : ''}`}
                 style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
                 onClick={() => onSelectMessage(message.id)}
                 aria-label={`Open ${message.author}'s message in the conversation`}
                 aria-current={selectedMessageId === message.id ? 'true' : undefined}
               >
-                <span>{parentIds.get(message.id) ? 'Reply' : 'Message'} · {message.author}</span>
+                <span>{parentIds.get(message.id) ? `${RELATION_LABELS[getReplyRelation(message)]} · ${message.author}` : `Message · ${message.author}`}</span>
                 <strong>{excerpt(message.body)}</strong>
-                {parentIds.get(message.id) && <small>Explicit reply link</small>}
+                {parentIds.get(message.id) && <small>Explicit {RELATION_LABELS[getReplyRelation(message)].toLowerCase()} link</small>}
               </button>
             )
           })}
