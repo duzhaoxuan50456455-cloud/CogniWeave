@@ -10,9 +10,10 @@ type ConversationMapProps = {
   onSelectMessage: (messageId: string) => void
 }
 
-const NODE_WIDTH = 218
-const NODE_HEIGHT = 76
-const NODE_GAP = 28
+const NODE_WIDTH = 176
+const NODE_HEIGHT = 68
+const NODE_X_GAP = 42
+const NODE_Y_GAP = 54
 
 function getMessageParentId(message: Contribution, messagesById: Map<string, Contribution>): string | null {
   if (message.replyToId && messagesById.has(message.replyToId)) return message.replyToId
@@ -21,7 +22,7 @@ function getMessageParentId(message: Contribution, messagesById: Map<string, Con
 }
 
 function excerpt(body: string): string {
-  return body.length > 84 ? `${body.slice(0, 81)}…` : body
+  return body.length > 62 ? `${body.slice(0, 59)}…` : body
 }
 
 export function ConversationMap({
@@ -52,21 +53,48 @@ export function ConversationMap({
     })
 
     const positions: Record<string, Point> = {}
-    let row = 0
-    let maxDepth = 0
-    const visit = (message: Contribution, depth: number) => {
-      positions[message.id] = { x: 24 + depth * 150, y: 24 + row * (NODE_HEIGHT + NODE_GAP) }
-      row += 1
-      maxDepth = Math.max(maxDepth, depth)
-      ;(children.get(message.id) ?? []).forEach((child) => visit(child, depth + 1))
+    const clusterWidth = new Map<string, number>()
+    const getClusterWidth = (message: Contribution): number => {
+      const descendants = children.get(message.id) ?? []
+      const width = descendants.length === 0
+        ? NODE_WIDTH
+        : Math.max(
+            NODE_WIDTH,
+            descendants.reduce((total, child) => total + getClusterWidth(child), 0) + NODE_X_GAP * (descendants.length - 1),
+          )
+      clusterWidth.set(message.id, width)
+      return width
     }
-    roots.forEach((root) => visit(root, 0))
+    const visit = (message: Contribution, depth: number, left: number) => {
+      const width = clusterWidth.get(message.id) ?? NODE_WIDTH
+      positions[message.id] = {
+        x: left + (width - NODE_WIDTH) / 2,
+        y: 28 + depth * (NODE_HEIGHT + NODE_Y_GAP),
+      }
+      let childLeft = left
+      ;(children.get(message.id) ?? []).forEach((child) => {
+        const childWidth = clusterWidth.get(child.id) ?? NODE_WIDTH
+        visit(child, depth + 1, childLeft)
+        childLeft += childWidth + NODE_X_GAP
+      })
+    }
+
+    let rootLeft = 28
+    roots.forEach((root) => {
+      const rootWidth = getClusterWidth(root)
+      visit(root, 0, rootLeft)
+      rootLeft += rootWidth + NODE_X_GAP * 2
+    })
+    const maxDepth = Object.values(positions).reduce(
+      (deepest, point) => Math.max(deepest, point.y),
+      0,
+    )
 
     return {
       positions,
       parentIds,
-      contentHeight: Math.max(280, row * (NODE_HEIGHT + NODE_GAP) + 24),
-      contentWidth: Math.max(420, 48 + maxDepth * 150 + NODE_WIDTH),
+      contentHeight: Math.max(280, maxDepth + NODE_HEIGHT + 32),
+      contentWidth: Math.max(420, rootLeft - NODE_X_GAP),
     }
   }, [messages])
 
@@ -109,15 +137,15 @@ export function ConversationMap({
               const childPosition = positions[message.id]
               const parentPosition = parentId ? positions[parentId] : undefined
               if (!parentPosition || !childPosition) return null
-              const startX = parentPosition.x + NODE_WIDTH
-              const startY = parentPosition.y + NODE_HEIGHT / 2
-              const endX = childPosition.x
-              const endY = childPosition.y + NODE_HEIGHT / 2
-              const controlX = startX + (endX - startX) / 2
+              const startX = parentPosition.x + NODE_WIDTH / 2
+              const startY = parentPosition.y + NODE_HEIGHT
+              const endX = childPosition.x + NODE_WIDTH / 2
+              const endY = childPosition.y
+              const controlY = startY + (endY - startY) / 2
               return (
                 <path
                   key={`${parentId}-${message.id}`}
-                  d={`M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`}
+                  d={`M ${startX} ${startY} C ${startX} ${controlY}, ${endX} ${controlY}, ${endX} ${endY}`}
                 />
               )
             })}
@@ -129,21 +157,21 @@ export function ConversationMap({
                 type="button"
                 key={message.id}
                 ref={(node) => { nodeRefs.current[message.id] = node }}
-                className={`conversation-map__node${selectedMessageId === message.id ? ' conversation-map__node--selected' : ''}`}
+                className={`conversation-map__node${parentIds.get(message.id) ? ' conversation-map__node--reply' : ' conversation-map__node--root'}${selectedMessageId === message.id ? ' conversation-map__node--selected' : ''}`}
                 style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
                 onClick={() => onSelectMessage(message.id)}
                 aria-label={`Open ${message.author}'s message in the conversation`}
                 aria-current={selectedMessageId === message.id ? 'true' : undefined}
               >
-                <span>{message.author}</span>
+                <span>{parentIds.get(message.id) ? 'Reply' : 'Message'} · {message.author}</span>
                 <strong>{excerpt(message.body)}</strong>
-                {parentIds.get(message.id) && <small>↳ Reply</small>}
+                {parentIds.get(message.id) && <small>Explicit reply link</small>}
               </button>
             )
           })}
         </div>
       </div>
-      <p className="conversation-map__hint">Select a node to locate its original message.</p>
+      <p className="conversation-map__hint">Only explicit reply links are shown. Select a node to locate its original message.</p>
     </aside>
   )
 }
