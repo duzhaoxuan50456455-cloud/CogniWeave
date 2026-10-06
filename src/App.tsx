@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { appStyles } from './appStyles'
 import { ChatView } from './components/ChatView'
 import { LandingPage } from './components/LandingPage'
@@ -29,7 +29,17 @@ function App() {
   const [messageReactions, setMessageReactions] = useState<
     Record<string, ReactionEmoji | undefined>
   >({})
+  const [isMapVisible, setIsMapVisible] = useState(true)
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
+  const [selectionSource, setSelectionSource] = useState<'chat' | 'map' | null>(null)
   const [quizSession, setQuizSession] = useState(0)
+  const selectionTimerRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (selectionTimerRef.current !== null) {
+      window.clearTimeout(selectionTimerRef.current)
+    }
+  }, [])
 
   const chatMessages = useMemo(
     () =>
@@ -96,7 +106,7 @@ function App() {
         kind: 'message',
         author: 'You',
         body,
-        parentId: null,
+        parentId: replyToId,
         relation: 'idea',
         createdAt: Date.now(),
         replyToId,
@@ -115,6 +125,19 @@ function App() {
     },
     [],
   )
+
+  const handleSelectMessage = useCallback((messageId: string, source: 'chat' | 'map') => {
+    setSelectedMessageId(messageId)
+    setSelectionSource(source)
+    if (selectionTimerRef.current !== null) {
+      window.clearTimeout(selectionTimerRef.current)
+    }
+    selectionTimerRef.current = window.setTimeout(() => {
+      setSelectedMessageId(null)
+      setSelectionSource(null)
+      selectionTimerRef.current = null
+    }, 2_400)
+  }, [])
 
   const handleUpdateContribution = useCallback(
     (id: string, changes: Pick<Contribution, 'title' | 'body'>) => {
@@ -185,9 +208,14 @@ function App() {
           messageDraft={messageDraft}
           replyToId={replyToId}
           reactions={messageReactions}
+          isMapVisible={isMapVisible}
+          selectedMessageId={selectedMessageId}
+          selectionSource={selectionSource}
           onMessageDraftChange={setMessageDraft}
           onReplyToChange={setReplyToId}
           onToggleReaction={handleToggleReaction}
+          onToggleMap={() => setIsMapVisible((visible) => !visible)}
+          onSelectMessage={handleSelectMessage}
           onSendMessage={handleSendMessage}
           onBack={goBackFromDiscussion}
         />

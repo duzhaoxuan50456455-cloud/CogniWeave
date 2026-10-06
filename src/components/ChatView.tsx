@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import type { Contribution, ReactionEmoji } from '../types/discussion'
+import { ConversationMap } from './ConversationMap'
 
 type ChatViewProps = {
   topic: string
@@ -14,9 +15,14 @@ type ChatViewProps = {
   messageDraft: string
   replyToId: string | null
   reactions: Record<string, ReactionEmoji | undefined>
+  isMapVisible: boolean
+  selectedMessageId: string | null
+  selectionSource: 'chat' | 'map' | null
   onMessageDraftChange: (value: string) => void
   onReplyToChange: (messageId: string | null) => void
   onToggleReaction: (messageId: string, reaction: ReactionEmoji) => void
+  onToggleMap: () => void
+  onSelectMessage: (messageId: string, source: 'chat' | 'map') => void
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void
   onBack: () => void
 }
@@ -69,14 +75,21 @@ export function ChatView({
   messageDraft,
   replyToId,
   reactions,
+  isMapVisible,
+  selectedMessageId,
+  selectionSource,
   onMessageDraftChange,
   onReplyToChange,
   onToggleReaction,
+  onToggleMap,
+  onSelectMessage,
   onSendMessage,
   onBack,
 }: ChatViewProps) {
   const threadEndRef = useRef<HTMLDivElement>(null)
+  const threadRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
+  const messageRefs = useRef<Record<string, HTMLElement | null>>({})
   const typingTimerRef = useRef<number | null>(null)
   const [composerMenu, setComposerMenu] = useState<'actions' | 'reactions' | null>(null)
   const [messageReactionTarget, setMessageReactionTarget] = useState<string | null>(null)
@@ -92,6 +105,21 @@ export function ChatView({
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, isTypingVisible])
+
+  useEffect(() => {
+    if (selectionSource !== 'map' || !selectedMessageId) return
+    const thread = threadRef.current
+    const message = messageRefs.current[selectedMessageId]
+    if (!thread || !message) return
+
+    const threadRect = thread.getBoundingClientRect()
+    const messageRect = message.getBoundingClientRect()
+    const messageIsVisible =
+      messageRect.top >= threadRect.top && messageRect.bottom <= threadRect.bottom
+    if (!messageIsVisible) {
+      message.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [selectedMessageId, selectionSource])
 
   useEffect(() => {
     const textarea = composerRef.current
@@ -178,9 +206,19 @@ export function ChatView({
             </p>
           </div>
         </div>
-        <button type="button" className="icon-button" aria-label="Conversation options, coming later" title="Conversation options — coming later" disabled>•••</button>
+        <button
+          type="button"
+          className="map-toggle"
+          onClick={onToggleMap}
+          aria-pressed={isMapVisible}
+          aria-label={isMapVisible ? 'Hide conversation map' : 'Show conversation map'}
+          title={isMapVisible ? 'Hide map' : 'Show map'}
+        >
+          <span aria-hidden="true">⌘</span> {isMapVisible ? 'Hide map' : 'Show map'}
+        </button>
       </header>
 
+      <div className={`chat-workspace${isMapVisible ? ' chat-workspace--with-map' : ''}`}>
       <main className="chat-main">
         <div className="chat-topic">
           <span className="chat-topic__eyebrow">Today’s discussion</span>
@@ -188,7 +226,7 @@ export function ChatView({
           <p>Share a thought, build on an idea, or challenge the group.</p>
         </div>
 
-        <div className="chat-thread" role="log" aria-live="polite" aria-label="Discussion messages">
+        <div className="chat-thread" ref={threadRef} role="log" aria-live="polite" aria-label="Discussion messages">
           <div className="date-divider"><span>Today</span></div>
           {messages.map((message, index) => {
             const isYou = message.author === 'You'
@@ -200,7 +238,8 @@ export function ChatView({
             return (
               <article
                 key={message.id}
-                className={`chat-message${isYou ? ' chat-message--you' : ''}${joinsPrevious ? ' chat-message--continued' : ''}${joinsNext ? ' chat-message--continues' : ''}`}
+                ref={(node) => { messageRefs.current[message.id] = node }}
+                className={`chat-message${isYou ? ' chat-message--you' : ''}${joinsPrevious ? ' chat-message--continued' : ''}${joinsNext ? ' chat-message--continues' : ''}${selectedMessageId === message.id ? ' chat-message--selected' : ''}`}
               >
                 {!isYou && !joinsNext && (
                   <div
@@ -243,7 +282,13 @@ export function ChatView({
                         ))}
                       </div>
                     )}
-                    <div className="chat-message__bubble">
+                    <button
+                      type="button"
+                      className="chat-message__bubble"
+                      onClick={() => onSelectMessage(message.id, 'chat')}
+                      aria-label={`Locate ${message.author}'s message in the conversation map`}
+                      title={isMapVisible ? 'Locate in map' : 'Message selected'}
+                    >
                       {quotedMessage && (
                         <div className="reply-quote">
                           <strong>{quotedMessage.author}</strong>
@@ -251,7 +296,7 @@ export function ChatView({
                         </div>
                       )}
                       <p>{message.body}</p>
-                    </div>
+                    </button>
                   </div>
                   {selectedReaction && (
                     <div className="message-reactions">
@@ -279,7 +324,6 @@ export function ChatView({
           )}
           <div ref={threadEndRef} />
         </div>
-      </main>
 
       <form className="chat-composer" onSubmit={handleSubmit}>
         {replyTarget && (
@@ -330,6 +374,16 @@ export function ChatView({
           </button>
         </div>
       </form>
+      </main>
+      {isMapVisible && (
+        <ConversationMap
+          messages={messages}
+          selectedMessageId={selectedMessageId}
+          focusSelectedMessage={selectionSource === 'chat'}
+          onSelectMessage={(messageId) => onSelectMessage(messageId, 'map')}
+        />
+      )}
+      </div>
     </div>
   )
 }
