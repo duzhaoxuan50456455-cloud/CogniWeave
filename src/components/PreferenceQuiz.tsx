@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { RecommendedMode } from '../types/discussion'
 
+// Research-only self-report asset. It is intentionally excluded from the v0.5.1 product flow.
+
 type QuizChoice = 'talk' | 'organize'
 
 type QuizOption = {

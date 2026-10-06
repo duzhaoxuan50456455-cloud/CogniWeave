@@ -1,3 +1,4 @@
+// Research-only comparison screen. It is intentionally excluded from the v0.5.1 product flow.
 type ModeSelectionProps = {
   topic: string
   onBack: () => void

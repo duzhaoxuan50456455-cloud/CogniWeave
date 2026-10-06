@@ -15,6 +15,8 @@ export const appStyles = `
   .landing__cards { width: min(100%,32rem); display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .landing__card, .mode-option { width: 100%; border: 1px solid var(--line); border-radius: 1rem; padding: 1.4rem; background: rgba(255,255,255,.92); text-align: left; transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease; }
   .landing__card { text-align: center; }
+  .landing__feature { cursor: default; }
+  .landing__feature:hover { border-color: var(--line); transform: none; box-shadow: none; }
   .landing__card:hover, .mode-option:hover { border-color: #93c5fd; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37,99,235,.09); }
   .landing__card-icon, .mode-option__icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; margin: 0 auto .8rem; border-radius: .75rem; background: #eff6ff; color: var(--blue); }
   .landing__card p { margin: .3rem 0 0; color: var(--muted); font-size: .76rem; line-height: 1.5; }

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { appStyles } from './appStyles'
 import { ChatView } from './components/ChatView'
 import { LandingPage } from './components/LandingPage'
-import { ModeSelection } from './components/ModeSelection'
-import { PreferenceQuiz } from './components/PreferenceQuiz'
 import { TreeView } from './components/TreeView'
 import {
   createId,
@@ -12,7 +10,6 @@ import {
   sortByCreatedAt,
   type Contribution,
   type DiscussionReturnScreen,
-  type RecommendedMode,
   type ReactionEmoji,
   type Screen,
 } from './types/discussion'
@@ -32,7 +29,6 @@ function App() {
   const [isMapVisible, setIsMapVisible] = useState(true)
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [selectionSource, setSelectionSource] = useState<'chat' | 'map' | null>(null)
-  const [quizSession, setQuizSession] = useState(0)
   const selectionTimerRef = useRef<number | null>(null)
 
   useEffect(() => () => {
@@ -59,39 +55,13 @@ function App() {
     [contributions],
   )
 
-  function goLanding() {
-    setScreen('landing')
-  }
-
-  function goModeSelection() {
-    setScreen('mode-selection')
-  }
-
-  function openPreferenceQuiz() {
-    setQuizSession((n) => n + 1)
-    setScreen('preference-quiz')
-  }
-
   function openChat(from: DiscussionReturnScreen) {
     setReturnScreen(from)
     setScreen('chat')
   }
 
-  function openTree(from: DiscussionReturnScreen) {
-    setReturnScreen(from)
-    setScreen('tree')
-  }
-
   function goBackFromDiscussion() {
     setScreen(returnScreen)
-  }
-
-  function openRecommendedMode(mode: RecommendedMode) {
-    if (mode === 'talk') {
-      openChat('mode-selection')
-      return
-    }
-    openTree('mode-selection')
   }
 
   function handleSendMessage(event: FormEvent<HTMLFormElement>) {
@@ -175,30 +145,7 @@ function App() {
       <style>{appStyles}</style>
 
       {screen === 'landing' && (
-        <LandingPage
-          onStartDiscussion={goModeSelection}
-          onOpenChatPreview={() => openChat('landing')}
-          onOpenTreePreview={() => openTree('landing')}
-        />
-      )}
-
-      {screen === 'mode-selection' && (
-        <ModeSelection
-          topic={DISCUSSION_TOPIC}
-          onBack={goLanding}
-          onTalk={() => openChat('mode-selection')}
-          onOrganize={() => openTree('mode-selection')}
-          onHelpChoose={openPreferenceQuiz}
-        />
-      )}
-
-      {screen === 'preference-quiz' && (
-        <PreferenceQuiz
-          key={quizSession}
-          onBack={goModeSelection}
-          onUseRecommended={openRecommendedMode}
-          onChooseAnother={goModeSelection}
-        />
+        <LandingPage onStartDiscussion={() => openChat('landing')} />
       )}
 
       {screen === 'chat' && (
