@@ -45,6 +45,15 @@ export function createTrialSequence(participantId: string): TrialAssignment[] {
   }))
 }
 
+const RESEARCHER_DEMO_CONDITIONS: readonly ExperimentalCondition[] = ['A', 'B', 'C']
+
+export function createResearcherDemoTrialSequence(participantId: string): TrialAssignment[] {
+  return createTrialSequence(participantId).map((trial, index) => ({
+    ...trial,
+    condition: RESEARCHER_DEMO_CONDITIONS[index],
+  }))
+}
+
 export function getDeveloperAssignmentTable() {
   return ['P001', 'P002', 'P003', 'P004', 'P005', 'P006'].map((participantId) => ({
     participantId,

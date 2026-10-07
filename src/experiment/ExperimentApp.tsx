@@ -7,7 +7,7 @@ import { FinalQuestionnaire } from './FinalQuestionnaire'
 import { QuestionPage } from './QuestionPage'
 import { RatingPage } from './RatingPage'
 import { getExperimentDiscussion, scoreAnswers } from './discussions'
-import { createTrialSequence, type ExperimentalCondition, type TrialAssignment } from './experimentConfig'
+import { createResearcherDemoTrialSequence, createTrialSequence, type ExperimentalCondition, type TrialAssignment } from './experimentConfig'
 import { createEvent, type ExperimentEventType } from './logger'
 import type { BackgroundVariables, ExperimentSession, TrialRatings, TrialRecord } from './studyTypes'
 
@@ -187,7 +187,7 @@ export function ExperimentApp({ previewCondition }: ExperimentAppProps) {
     const normalizedId = participantId.trim()
     if (!normalizedId) return
     setIsStarting(true)
-    const sequence = createTrialSequence(normalizedId)
+    const sequence = isResearcherMode ? createResearcherDemoTrialSequence(normalizedId) : createTrialSequence(normalizedId)
     replaceSession({
       participantId: normalizedId,
       assignedTrialSequence: sequence,
