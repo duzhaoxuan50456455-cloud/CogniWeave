@@ -1,75 +1,59 @@
-# React + TypeScript + Vite
+# CogniWeave
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+CogniWeave is a research-driven conversation workspace exploring how different discussion interface structures affect participation, navigation, cognitive load, and idea generation.
 
-Currently, two official plugins are available:
+## Research question
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+CogniWeave compares alternative structures for viewing the same group conversation and studies how those structures affect participants' navigation, participation, and understanding of ideas and their relationships.
 
-## React Compiler
+## Experimental conditions
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Condition A — Baseline:** Plain chronological chat with no reply or relation cues and no global map.
+- **Condition B — Local cues:** Chronological chat with local reply context and relation cues, but no global map.
+- **Condition C — Local + global structure:** The same local cues as Condition B, plus a read-only grouped relational map for navigating branches of the discussion.
 
-## Expanding the ESLint configuration
+## Current implementation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React, TypeScript, and Vite application.
+- Landing page, mode selection, and a three-question preference quiz for the normal product experience.
+- Messaging workspace with chronological messages, reply context, reactions, keyboard-friendly composer behavior, and a conversation map in the normal product flow.
+- Read-only participant experiment with participant ID setup, instructions, three discussion trials, comprehension questions, ratings, review discussion, background questions, final questionnaire, and researcher export controls.
+- Three authored discussion datasets: AI in university education, mandatory attendance policies, and peer grading in group projects.
+- Condition C grouped map with authored branch titles and compact message labels, parent-child structure, message previews, and Chat ↔ Map locating.
+- Local experiment-session persistence and event logging in browser storage.
+- Participant trial sequences counterbalanced from participant IDs.
+- Researcher/demo sessions use the fixed condition order **A → B → C** while participant counterbalancing remains unchanged.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Local setup
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Vite prints the local development URL when the server starts (typically `http://localhost:5173/`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Experiment modes
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Mode | URL |
+| --- | --- |
+| Participant experiment | `http://localhost:5173/?experiment=1` |
+| Researcher/demo mode | `http://localhost:5173/?experiment=1&researcher=1` |
 
-```
+## Screenshots
+
+### Condition A — Baseline chronological chat
+
+_Add Condition A screenshot here._
+
+### Condition B — Local reply and relation cues
+
+_Add Condition B screenshot here._
+
+### Condition C — Global relational map
+
+_Add Condition C / Map screenshot here._
+
+## Status
+
+CogniWeave is an active HCI research prototype.
