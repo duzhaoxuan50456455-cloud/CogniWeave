@@ -125,7 +125,11 @@ export function ExperimentApp({ previewCondition }: ExperimentAppProps) {
   const [sessionError, setSessionError] = useState<string | null>(initialSession.error)
   const [participantId, setParticipantId] = useState('')
   const [isStarting, setIsStarting] = useState(false)
-  const isResearcherMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('researcher') === '1'
+  const [previewPhase, setPreviewPhase] = useState<'discussion' | 'questions' | 'review'>('discussion')
+  const [previewAnswers, setPreviewAnswers] = useState<Array<number | null>>(() =>
+    Array.from({ length: getExperimentDiscussion('education').questions.length }, () => null),
+  )
+  const isResearcherMode = new URLSearchParams(window.location.search).get('researcher') === '1'
 
   function replaceSession(next: ExperimentSession) {
     saveSession(next)
@@ -148,16 +152,31 @@ export function ExperimentApp({ previewCondition }: ExperimentAppProps) {
 
   if (previewCondition) {
     const trial: TrialAssignment = { discussionId: 'education', condition: previewCondition }
+    const discussion = getExperimentDiscussion(trial.discussionId)
     return (
       <>
         <style>{appStyles}</style>
         <div className="research-preview-banner">Developer preview · condition {previewCondition}</div>
-        <ExperimentWorkspace
+        {previewPhase === 'discussion' && <ExperimentWorkspace
           trial={trial}
-          discussion={getExperimentDiscussion(trial.discussionId)}
+          discussion={discussion}
           onEvent={() => undefined}
-          onContinue={() => undefined}
-        />
+          onContinue={() => setPreviewPhase('questions')}
+        />}
+        {previewPhase === 'questions' && <QuestionPage
+          discussion={discussion}
+          answers={previewAnswers}
+          onAnswer={(questionIndex, answerIndex) => setPreviewAnswers((answers) => answers.map((answer, index) => index === questionIndex ? answerIndex : answer))}
+          onReview={() => setPreviewPhase('review')}
+          onSubmit={() => undefined}
+        />}
+        {previewPhase === 'review' && <ExperimentWorkspace
+          trial={trial}
+          discussion={discussion}
+          onEvent={() => undefined}
+          onContinue={() => setPreviewPhase('questions')}
+          reviewMode
+        />}
       </>
     )
   }

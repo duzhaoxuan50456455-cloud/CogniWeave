@@ -2,7 +2,8 @@ import type { Contribution, ReplyRelation } from '../types/discussion'
 import type { QuestionType, TrialScores } from './studyTypes'
 
 export type ComprehensionQuestion = { id: string; type: QuestionType; prompt: string; options: readonly string[]; correctOptionIndex: number }
-export type ExperimentDiscussion = { id: string; title: string; messages: Contribution[]; questions: readonly ComprehensionQuestion[] }
+export type ExperimentContribution = Contribution & { mapLabel: string; branchTitle?: string }
+export type ExperimentDiscussion = { id: string; title: string; messages: ExperimentContribution[]; questions: readonly ComprehensionQuestion[] }
 type MessagePlan = { authorIndex: number; parent?: number; relation?: ReplyRelation }
 
 // Five roots, maximum depth three, and the same controlled relation mix per topic.
@@ -12,16 +13,16 @@ const MESSAGE_PLAN: readonly MessagePlan[] = [
   { authorIndex: 1 }, { authorIndex: 2, parent: 9, relation: 'support' }, { authorIndex: 0, parent: 9, relation: 'challenge' }, { authorIndex: 3, parent: 9, relation: 'question' }, { authorIndex: 1, parent: 10, relation: 'reply' }, { authorIndex: 2, parent: 11, relation: 'challenge' },
   { authorIndex: 2 }, { authorIndex: 3, parent: 15, relation: 'support' }, { authorIndex: 1, parent: 15, relation: 'challenge' }, { authorIndex: 0, parent: 15, relation: 'question' }, { authorIndex: 2, parent: 16, relation: 'reply' }, { authorIndex: 3, parent: 17, relation: 'question' },
   { authorIndex: 3 }, { authorIndex: 0, parent: 21, relation: 'support' }, { authorIndex: 1, parent: 21, relation: 'challenge' }, { authorIndex: 2, parent: 21, relation: 'question' }, { authorIndex: 3, parent: 22, relation: 'reply' }, { authorIndex: 0, parent: 23, relation: 'challenge' }, { authorIndex: 1, parent: 24, relation: 'support' },
-  { authorIndex: 0 }, { authorIndex: 2, parent: 28, relation: 'question' }, { authorIndex: 1, parent: 28, relation: 'support' }, { authorIndex: 3, parent: 6, relation: 'reply' }, { authorIndex: 0, parent: 31, relation: 'support' },
+  { authorIndex: 0 }, { authorIndex: 2, parent: 28, relation: 'question' }, { authorIndex: 1, parent: 28, relation: 'support' }, { authorIndex: 3, parent: 30, relation: 'reply' }, { authorIndex: 0, parent: 31, relation: 'support' },
 ]
 
-function buildDiscussion(id: string, title: string, authors: readonly [string, string, string, string], bodies: readonly string[], questions: readonly ComprehensionQuestion[]): ExperimentDiscussion {
-  if (bodies.length !== MESSAGE_PLAN.length) throw new Error(`Expected ${MESSAGE_PLAN.length} messages for ${id}`)
+function buildDiscussion(id: string, title: string, authors: readonly [string, string, string, string], bodies: readonly string[], mapLabels: readonly string[], branchTitles: Readonly<Record<number, string>>, questions: readonly ComprehensionQuestion[]): ExperimentDiscussion {
+  if (bodies.length !== MESSAGE_PLAN.length || mapLabels.length !== MESSAGE_PLAN.length) throw new Error(`Expected ${MESSAGE_PLAN.length} messages and labels for ${id}`)
   const messages = bodies.map((body, index) => {
     const plan = MESSAGE_PLAN[index]
     const parentId = plan.parent ? `${id}-m${plan.parent}` : null
     const relation: Contribution['relation'] = plan.relation === 'challenge' ? 'challenge' : plan.relation === 'question' ? 'question' : 'idea'
-    return { id: `${id}-m${index + 1}`, kind: 'message' as const, author: authors[plan.authorIndex], body, parentId, relation, createdAt: (index + 1) * 60_000, replyToId: parentId, replyRelation: plan.relation }
+    return { id: `${id}-m${index + 1}`, kind: 'message' as const, author: authors[plan.authorIndex], body, parentId, relation, createdAt: (index + 1) * 60_000, replyToId: parentId, replyRelation: plan.relation, mapLabel: mapLabels[index], branchTitle: branchTitles[index + 1] }
   })
   return { id, title, messages, questions }
 }
@@ -57,6 +58,14 @@ const peerBodies = [
   'Students with jobs may have less overlap for meetings even when they contribute consistently.', 'How should asynchronous work be recognized when meetings are not possible?', 'A contribution log could include asynchronous decisions as well as meetings.', 'That would recognize jobs, but leaves concern about quiet coordination.', 'The log explanation could ask teams to describe coordination that task lists miss.',
 ]
 
+const educationMapLabels = ['Explaining AI use', 'Short disclosure note', 'Use and thinking', 'Shared AI definition', 'Using a template', 'Template as checklist', 'Guided course reflection', 'Reflection in large courses', 'Faculty development needs', 'Example course assignments', 'Examples across courses', 'Updating course examples', 'Cross-department updates', 'Studio and lab risks', 'Tutors offering hints', 'Help outside office hours', 'Working around hints', 'Productive struggle', 'Tutor response proposal', 'Direct guidance barriers', 'Assessment and revision', 'Recording edits in feedback', 'Reviewing edit records', 'Data students retain', 'Low-stakes reflection', 'Reflection as performance', 'Feedback as dialogue', 'Access to AI tools', 'Devices and internet access', 'Campus access support', 'Disclosure and learning', 'Combined policy approach']
+const attendanceMapLabels = ['Participation beyond seat time', 'Recognizing attendance disruptions', 'Routines in live courses', 'When presence matters', 'Course-specific attendance reasons', 'Different course policies', 'Shared policy template', 'Meaningful course exceptions', 'What students miss', 'Recorded course foundations', 'Reasons to attend', 'Recording course boundaries', 'Live course activities', 'Teaching and practice', 'Participation check-ins', 'Early support conversation', 'Questions around check-ins', 'Private support requests', 'Separating support records', 'Staff support workload', 'Absences in group projects', 'Team contingency plans', 'Uneven team influence', 'Instructor role in teams', 'Midpoint problem check', 'Administrative follow-through', 'Predictable student support', 'Travel to campus', 'Transit disruption question', 'Recovery after disruptions', 'When live presence matters', 'Explaining course presence']
+const peerMapLabels = ['Peer grading approach', 'Contribution criteria', 'Ratings and relationships', 'Evidence for ratings', 'Contribution activity log', 'Coordination beyond visible tasks', 'Context beside the log', 'Different team accounts', 'Feedback before grades', 'Midpoint feedback', 'Conflict in feedback', 'Support for feedback', 'Practice feedback language', 'Control of shared files', 'Shared project materials', 'Using shared folders', 'Team roles and work', 'Planning flexible roles', 'Rebalancing team roles', 'After roles shift', 'Individual project reflection', 'Documenting quiet contributions', 'Reflection as promotion', 'Sharing team reflections', 'Two reflection formats', 'Workload across formats', 'Resolving issues first', 'Working beyond meetings', 'Recognizing asynchronous work', 'Asynchronous task decisions', 'Coordination outside tasks', 'Coordination in explanations']
+
+const educationBranchTitles = { 1: 'Disclosure policy', 9: 'Faculty guidance', 15: 'AI tutoring', 21: 'Assessment and privacy', 28: 'Access and equity' }
+const attendanceBranchTitles = { 1: 'Flexible participation', 9: 'Recording course material', 15: 'Support and privacy', 21: 'Group project coordination', 28: 'Commuter access' }
+const peerBranchTitles = { 1: 'Peer feedback criteria', 9: 'Midpoint feedback', 15: 'Shared ownership', 21: 'Reflection and repair', 28: 'Asynchronous contribution' }
+
 const educationQuestions: readonly ComprehensionQuestion[] = [
   { id: 'q1', type: 'factual', prompt: 'What was the initial proposal about AI use?', options: ['Require an AI tutor in every course', 'Allow early-draft use with disclosure', 'Ban AI from all assignments', 'Grade only final answers'], correctOptionIndex: 1 },
   { id: 'q2', type: 'factual', prompt: 'What support did the final branch discuss?', options: ['A faculty workshop', 'A version-history tool', 'A campus loan program', 'A laboratory policy'], correctOptionIndex: 2 },
@@ -89,8 +98,8 @@ const peerQuestions: readonly ComprehensionQuestion[] = [
 ]
 
 export const EXPERIMENT_DISCUSSIONS: readonly ExperimentDiscussion[] = [
-  buildDiscussion('education', 'AI in university education', ['Maya', 'Owen', 'Leah', 'Victor'], educationBodies, educationQuestions),
-  buildDiscussion('attendance', 'Mandatory attendance policies', ['Nora', 'Caleb', 'Priya', 'Simon'], attendanceBodies, attendanceQuestions),
-  buildDiscussion('peer-grading', 'Peer grading in group projects', ['Rosa', 'Daniel', 'Aisha', 'Martin'], peerBodies, peerQuestions),
+  buildDiscussion('education', 'AI in university education', ['Maya', 'Owen', 'Leah', 'Victor'], educationBodies, educationMapLabels, educationBranchTitles, educationQuestions),
+  buildDiscussion('attendance', 'Mandatory attendance policies', ['Nora', 'Caleb', 'Priya', 'Simon'], attendanceBodies, attendanceMapLabels, attendanceBranchTitles, attendanceQuestions),
+  buildDiscussion('peer-grading', 'Peer grading in group projects', ['Rosa', 'Daniel', 'Aisha', 'Martin'], peerBodies, peerMapLabels, peerBranchTitles, peerQuestions),
 ]
 export function getExperimentDiscussion(id: string): ExperimentDiscussion { const discussion = EXPERIMENT_DISCUSSIONS.find((item) => item.id === id); if (!discussion) throw new Error(`Unknown experiment discussion: ${id}`); return discussion }

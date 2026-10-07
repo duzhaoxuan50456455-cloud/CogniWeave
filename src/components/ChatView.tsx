@@ -5,6 +5,7 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react'
 import type { Contribution, ReactionEmoji, ReplyRelation } from '../types/discussion'
 import { ConversationMap } from './ConversationMap'
@@ -18,7 +19,7 @@ type ChatViewProps = {
   reactions: Record<string, ReactionEmoji | undefined>
   isMapVisible: boolean
   selectedMessageId: string | null
-  selectionSource: 'chat' | 'map' | null
+  selectionSource: 'chat' | 'map' | 'map-preview' | null
   onMessageDraftChange: (value: string) => void
   onReplyToChange: (messageId: string | null) => void
   onReplyRelationChange: (relation: ReplyRelation) => void
@@ -33,6 +34,7 @@ type ChatViewProps = {
   onContinueToQuestions?: () => void
   researchContinueLabel?: string
   researchLayout?: boolean
+  mapContent?: ReactNode
 }
 
 const REACTIONS: readonly ReactionEmoji[] = ['👍', '💡', '❓', '❤️']
@@ -111,6 +113,7 @@ export function ChatView({
   onContinueToQuestions,
   researchContinueLabel = 'Continue to questions',
   researchLayout = false,
+  mapContent,
 }: ChatViewProps) {
   const threadEndRef = useRef<HTMLDivElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
@@ -231,7 +234,7 @@ export function ChatView({
           <span aria-hidden="true">←</span>
         </button> : <span aria-hidden="true" />}
         <div className="discussion-header__identity">
-          <div className="discussion-header__mark" aria-hidden="true">C</div>
+          <div className="discussion-header__mark" aria-hidden="true">{researchReadOnly ? '' : 'C'}</div>
           <div>
             <h1 className="discussion-header__title">{researchReadOnly ? 'Read this discussion' : 'CogniWeave'}</h1>
             {!researchReadOnly && <p className="discussion-header__status">
@@ -439,14 +442,14 @@ export function ChatView({
         </div>
       )}
       </main>
-      {isMapVisible && (
+      {isMapVisible && (mapContent ?? (
         <ConversationMap
           messages={messages}
           selectedMessageId={selectedMessageId}
           focusSelectedMessage={selectionSource === 'chat'}
           onSelectMessage={(messageId) => onSelectMessage(messageId, 'map')}
         />
-      )}
+      ))}
       </div>
     </div>
   )

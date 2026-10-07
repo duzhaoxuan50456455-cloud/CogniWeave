@@ -12,6 +12,9 @@ export type ExperimentEventType =
   | 'rating_submit'
   | 'chat_message_click'
   | 'map_node_click'
+  | 'map_preview_open'
+  | 'map_preview_close'
+  | 'map_view_in_conversation'
   | 'chat_to_map'
   | 'map_to_chat'
 

@@ -12,7 +12,7 @@ export function FinalQuestionnaire({ value, assignments, onChange, onSubmit }: F
   const questions: ReadonlyArray<{ key: keyof Omit<FinalQuestionnaireResponse, 'comments'>; prompt: string }> = [
     { key: 'preferredCondition', prompt: 'Which interface did you prefer overall?' },
     { key: 'bestPerformanceCondition', prompt: 'Which interface do you think helped you perform best?' },
-    { key: 'easiestCondition', prompt: 'Which interface felt easiest to understand?' },
+    { key: 'easiestCondition', prompt: 'Which interface required the least effort to understand?' },
     { key: 'mostUsefulCondition', prompt: 'Which interface felt most useful?' },
   ]
   const complete = questions.every(({ key }) => value[key] !== null)

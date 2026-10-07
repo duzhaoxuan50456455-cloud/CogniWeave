@@ -10,10 +10,10 @@ type ConversationMapProps = {
   onSelectMessage: (messageId: string) => void
 }
 
-const NODE_WIDTH = 176
-const NODE_HEIGHT = 68
-const NODE_X_GAP = 42
-const NODE_Y_GAP = 54
+const NODE_WIDTH = 160
+const NODE_HEIGHT = 72
+const NODE_X_GAP = 24
+const NODE_Y_GAP = 34
 
 const RELATION_LABELS: Record<ReplyRelation, string> = {
   reply: 'Reply',
@@ -77,25 +77,33 @@ export function ConversationMap({
       clusterWidth.set(message.id, width)
       return width
     }
-    const visit = (message: Contribution, depth: number, left: number) => {
+    const getClusterHeight = (message: Contribution): number => {
+      const descendants = children.get(message.id) ?? []
+      return descendants.length === 0
+        ? NODE_HEIGHT
+        : NODE_HEIGHT + NODE_Y_GAP + Math.max(...descendants.map(getClusterHeight))
+    }
+    const visit = (message: Contribution, depth: number, left: number, top: number) => {
       const width = clusterWidth.get(message.id) ?? NODE_WIDTH
       positions[message.id] = {
         x: left + (width - NODE_WIDTH) / 2,
-        y: 28 + depth * (NODE_HEIGHT + NODE_Y_GAP),
+        y: top + depth * (NODE_HEIGHT + NODE_Y_GAP),
       }
       let childLeft = left
       ;(children.get(message.id) ?? []).forEach((child) => {
         const childWidth = clusterWidth.get(child.id) ?? NODE_WIDTH
-        visit(child, depth + 1, childLeft)
+        visit(child, depth + 1, childLeft, top)
         childLeft += childWidth + NODE_X_GAP
       })
     }
 
-    let rootLeft = 28
+    let rootTop = 28
+    let maxRight = 0
     roots.forEach((root) => {
       const rootWidth = getClusterWidth(root)
-      visit(root, 0, rootLeft)
-      rootLeft += rootWidth + NODE_X_GAP * 2
+      visit(root, 0, 28, rootTop)
+      maxRight = Math.max(maxRight, 28 + rootWidth)
+      rootTop += getClusterHeight(root) + NODE_Y_GAP * 2
     })
 
     // A malformed imported discussion must not blank the Map. Keep any node that
@@ -104,8 +112,9 @@ export function ConversationMap({
     messages.forEach((message) => {
       if (positions[message.id]) return
       parentIds.set(message.id, null)
-      positions[message.id] = { x: rootLeft, y: 28 }
-      rootLeft += NODE_WIDTH + NODE_X_GAP * 2
+      positions[message.id] = { x: 28, y: rootTop }
+      maxRight = Math.max(maxRight, 28 + NODE_WIDTH)
+      rootTop += NODE_HEIGHT + NODE_Y_GAP * 2
     })
     const maxDepth = Object.values(positions).reduce(
       (deepest, point) => Math.max(deepest, point.y),
@@ -115,8 +124,8 @@ export function ConversationMap({
     return {
       positions,
       parentIds,
-      contentHeight: Math.max(280, maxDepth + NODE_HEIGHT + 32),
-      contentWidth: Math.max(420, rootLeft - NODE_X_GAP),
+      contentHeight: Math.max(280, Math.max(maxDepth + NODE_HEIGHT + 32, rootTop)),
+      contentWidth: Math.max(420, maxRight + 28),
     }
   }, [messages])
 

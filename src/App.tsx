@@ -150,7 +150,7 @@ function App() {
     [],
   )
 
-  if (query.get('experiment') === '1' || previewCondition) {
+  if (query.get('experiment') === '1' || query.get('researcher') === '1' || previewCondition) {
     return <ExperimentApp previewCondition={previewCondition} />
   }
 
