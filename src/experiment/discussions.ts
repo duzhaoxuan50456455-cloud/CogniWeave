@@ -1,0 +1,96 @@
+import type { Contribution, ReplyRelation } from '../types/discussion'
+import type { QuestionType, TrialScores } from './studyTypes'
+
+export type ComprehensionQuestion = { id: string; type: QuestionType; prompt: string; options: readonly string[]; correctOptionIndex: number }
+export type ExperimentDiscussion = { id: string; title: string; messages: Contribution[]; questions: readonly ComprehensionQuestion[] }
+type MessagePlan = { authorIndex: number; parent?: number; relation?: ReplyRelation }
+
+// Five roots, maximum depth three, and the same controlled relation mix per topic.
+const MESSAGE_PLAN: readonly MessagePlan[] = [
+  { authorIndex: 0 }, { authorIndex: 1, parent: 1, relation: 'support' }, { authorIndex: 2, parent: 1, relation: 'challenge' }, { authorIndex: 3, parent: 1, relation: 'question' },
+  { authorIndex: 0, parent: 2, relation: 'reply' }, { authorIndex: 1, parent: 5, relation: 'challenge' }, { authorIndex: 2, parent: 3, relation: 'support' }, { authorIndex: 3, parent: 3, relation: 'question' },
+  { authorIndex: 1 }, { authorIndex: 2, parent: 9, relation: 'support' }, { authorIndex: 0, parent: 9, relation: 'challenge' }, { authorIndex: 3, parent: 9, relation: 'question' }, { authorIndex: 1, parent: 10, relation: 'reply' }, { authorIndex: 2, parent: 11, relation: 'challenge' },
+  { authorIndex: 2 }, { authorIndex: 3, parent: 15, relation: 'support' }, { authorIndex: 1, parent: 15, relation: 'challenge' }, { authorIndex: 0, parent: 15, relation: 'question' }, { authorIndex: 2, parent: 16, relation: 'reply' }, { authorIndex: 3, parent: 17, relation: 'question' },
+  { authorIndex: 3 }, { authorIndex: 0, parent: 21, relation: 'support' }, { authorIndex: 1, parent: 21, relation: 'challenge' }, { authorIndex: 2, parent: 21, relation: 'question' }, { authorIndex: 3, parent: 22, relation: 'reply' }, { authorIndex: 0, parent: 23, relation: 'challenge' }, { authorIndex: 1, parent: 24, relation: 'support' },
+  { authorIndex: 0 }, { authorIndex: 2, parent: 28, relation: 'question' }, { authorIndex: 1, parent: 28, relation: 'support' }, { authorIndex: 3, parent: 6, relation: 'reply' }, { authorIndex: 0, parent: 31, relation: 'support' },
+]
+
+function buildDiscussion(id: string, title: string, authors: readonly [string, string, string, string], bodies: readonly string[], questions: readonly ComprehensionQuestion[]): ExperimentDiscussion {
+  if (bodies.length !== MESSAGE_PLAN.length) throw new Error(`Expected ${MESSAGE_PLAN.length} messages for ${id}`)
+  const messages = bodies.map((body, index) => {
+    const plan = MESSAGE_PLAN[index]
+    const parentId = plan.parent ? `${id}-m${plan.parent}` : null
+    const relation: Contribution['relation'] = plan.relation === 'challenge' ? 'challenge' : plan.relation === 'question' ? 'question' : 'idea'
+    return { id: `${id}-m${index + 1}`, kind: 'message' as const, author: authors[plan.authorIndex], body, parentId, relation, createdAt: (index + 1) * 60_000, replyToId: parentId, replyRelation: plan.relation }
+  })
+  return { id, title, messages, questions }
+}
+
+export function scoreAnswers(discussion: ExperimentDiscussion, answers: Array<number | null>): TrialScores {
+  const types: readonly QuestionType[] = ['factual', 'direct-relation', 'integrative', 'global-reconstruction']
+  const totals = new Map<QuestionType, { correct: number; total: number }>(types.map((type) => [type, { correct: 0, total: 0 }]))
+  discussion.questions.forEach((question, index) => { const score = totals.get(question.type); if (score) { score.total += 1; if (answers[index] === question.correctOptionIndex) score.correct += 1 } })
+  const accuracy = (type: QuestionType) => { const value = totals.get(type); return value && value.total ? value.correct / value.total : 0 }
+  const correct = discussion.questions.filter((question, index) => answers[index] === question.correctOptionIndex).length
+  return { factualAccuracy: accuracy('factual'), directRelationAccuracy: accuracy('direct-relation'), integrativeAccuracy: accuracy('integrative'), globalReconstructionAccuracy: accuracy('global-reconstruction'), overallAccuracy: correct / discussion.questions.length }
+}
+
+const educationBodies = [
+  'Universities should allow AI for early drafts when students explain how they used it.', 'A short disclosure note would make that use visible without banning a useful tool.', 'Disclosure alone may not stop students from outsourcing difficult thinking.', 'Would instructors share one definition of acceptable AI assistance?', 'A common template could ask what students wrote, revised, or generated.', 'Templates can become box-checking unless courses discuss the reasoning behind them.', 'Guided reflection could make the template more than paperwork.', 'How much reflection is realistic in a large introductory course?',
+  'Faculty development may matter as much as a student policy because expectations vary.', 'Short example assignments could show staff how to set useful boundaries.', 'Examples may become rigid rules when courses have different learning goals.', 'Who would update examples as the tools change?', 'A cross-department group could refresh examples once each term.', 'That group could still miss risks in studio and laboratory courses.',
+  'AI tutors could help with practice when they offer hints instead of complete answers.', 'Hints may help students get unstuck outside office hours.', 'Students may learn to prompt around the hint limit and avoid the problem.', 'How can a tutor distinguish productive struggle from repeated frustration?', 'Tutors could ask students to explain a next step before offering another hint.', 'Would that create barriers for students who need direct guidance?',
+  'Assessment should reward process and revision, not only polished final answers.', 'Version histories can make revision visible during feedback conversations.', 'Version histories can become surveillance when every edit is treated as evidence.', 'What data should students be allowed to keep private?', 'A low-stakes reflection could explain substantial changes without grading every note.', 'Reflection can become performative if it carries too much weight.', 'Feedback should start a dialogue rather than prove authorship.',
+  'University AI licenses raise equity questions because personal subscriptions differ.', 'Could a shared license still leave unequal access to devices or internet?', 'A campus loan program could pair access support with the disclosure policy.', 'That would address access, but not whether disclosure changes learning.', 'The policy could combine access support with course-level reflection.',
+]
+const attendanceBodies = [
+  'Courses should use flexible attendance expectations and focus on participation rather than seat time.', 'That could recognize illness, commuting, and caregiving without treating absences as misconduct.', 'Flexibility may make routines harder in courses built around live discussion.', 'Which classes depend most on being physically present?', 'Seminars and labs could explain why attendance matters instead of using one rule.', 'Students may still receive inconsistent treatment when every instructor writes a policy.', 'A shared template could set a fair baseline while allowing course-specific explanations.', 'How would students know an exception is genuinely course-specific?',
+  'Policies should consider what students miss, not only what penalty follows an absence.', 'Recorded mini-lectures could help students recover routine material after an unavoidable absence.', 'Recordings can reduce the incentive to attend if live class offers nothing distinct.', 'Who would decide which material is appropriate to record?', 'Instructors could record foundations and reserve live time for practice or debate.', 'That may be difficult where explanation and practice are intertwined.',
+  'A brief participation check-in can help instructors notice quiet disengagement.', 'Check-ins may open a conversation before a student falls far behind.', 'They can feel like surveillance if students must justify every absence.', 'What information should a student disclose to receive support?', 'A private request channel could separate support from attendance accounting.', 'Would private requests create extra work for overloaded staff?',
+  'Group projects complicate attendance because absences affect peers directly.', 'Teams could set communication expectations and contingency plans at the start.', 'Peer agreements may be unfair when one student has less power in the group.', 'How can instructors intervene without monitoring every team conversation?', 'A midpoint check could identify problems before deadlines become urgent.', 'Midpoint checks can become administration with little follow-through.', 'The aim should be predictable support, not perfect monitoring.',
+  'Commuter students may face transportation disruptions that residential students rarely see.', 'Should transit disruptions count differently from other absences?', 'A flexible participation policy could include a simple recovery plan after disruptions.', 'That helps commuters, but leaves when live presence is essential unresolved.', 'Course explanations could connect recovery plans to the specific value of live work.',
+]
+const peerBodies = [
+  'Peer feedback should affect individual project grades when students have criteria and a chance to explain context.', 'Clear criteria could make uneven contributions visible to a team and instructor.', 'Peer scores can reflect popularity or conflict rather than the quality of work.', 'What evidence should students provide when rating a teammate?', 'A contribution log could record decisions, tasks, and revisions over time.', 'Logs may reward visible tasks while overlooking emotional labor or quiet coordination.', 'Students should be able to add a short explanation beside the log.', 'Who reviews explanations when teammates give contradictory accounts?',
+  'Feedback works best before the final grade, while teams can still change course.', 'A midpoint feedback round could let teams address uneven work early.', 'Midpoint feedback may intensify conflict when students lack constructive language.', 'What support should instructors provide for difficult feedback conversations?', 'A short workshop with examples could help students practise specific feedback language.', 'A workshop cannot solve power differences when one student controls key files.',
+  'Teams should establish shared ownership of project materials from the first week.', 'Shared folders can reduce the risk that one person becomes the gatekeeper.', 'Shared access does not prove everyone had meaningful work to do.', 'How can a project plan distribute work without making every role identical?', 'Teams could revisit roles after the first milestone and rebalance tasks openly.', 'Would rebalancing punish students who completed their original work quickly?',
+  'Individual reflection can connect each contribution to the final group outcome.', 'Reflections give quieter members a place to document work peers may not notice.', 'Reflections can become strategic self-promotion rather than honest evidence.', 'Should reflections be shared with teammates before instructors read them?', 'A private reflection plus a shared retrospective could balance candor and repair.', 'Two formats may add workload without improving grading fairness.', 'The process should give teams time to resolve issues before assigning consequences.',
+  'Students with jobs may have less overlap for meetings even when they contribute consistently.', 'How should asynchronous work be recognized when meetings are not possible?', 'A contribution log could include asynchronous decisions as well as meetings.', 'That would recognize jobs, but leaves concern about quiet coordination.', 'The log explanation could ask teams to describe coordination that task lists miss.',
+]
+
+const educationQuestions: readonly ComprehensionQuestion[] = [
+  { id: 'q1', type: 'factual', prompt: 'What was the initial proposal about AI use?', options: ['Require an AI tutor in every course', 'Allow early-draft use with disclosure', 'Ban AI from all assignments', 'Grade only final answers'], correctOptionIndex: 1 },
+  { id: 'q2', type: 'factual', prompt: 'What support did the final branch discuss?', options: ['A faculty workshop', 'A version-history tool', 'A campus loan program', 'A laboratory policy'], correctOptionIndex: 2 },
+  { id: 'q3', type: 'direct-relation', prompt: 'Who directly questioned the initial AI-use proposal?', options: ['Victor', 'Leah', 'Owen', 'Maya'], correctOptionIndex: 0 },
+  { id: 'q4', type: 'integrative', prompt: 'Which later proposal addressed students bypassing hint limits?', options: ['Use version histories', 'Ask students to explain a next step', 'Refresh example assignments', 'Pair licenses with devices'], correctOptionIndex: 1 },
+  { id: 'q5', type: 'integrative', prompt: 'If disclosure templates were adopted, which concern would remain?', options: ['Unequal device access', 'Whether final answers are polished', 'Avoiding difficult thinking', 'Updating examples'], correctOptionIndex: 2 },
+  { id: 'q6', type: 'integrative', prompt: 'Which pair expresses the assessment tension?', options: ['Making revision visible versus surveillance', 'Funding licenses versus training', 'Hints versus devices', 'Examples versus loan programs'], correctOptionIndex: 0 },
+  { id: 'q7', type: 'integrative', prompt: 'Which earlier concern did the final combined policy respond to?', options: ['A cross-department group', 'Removing version histories', 'Large introductory courses', 'Equity in access and meaningful disclosure'], correctOptionIndex: 3 },
+  { id: 'q8', type: 'global-reconstruction', prompt: 'Which sequence best describes the discussion?', options: ['Licenses → disclosure → assessment → tutors', 'Tutors → assessment → licenses → disclosure', 'Assessment → tutors → examples → disclosure', 'Disclosure → faculty guidance → tutors → assessment → equity'], correctOptionIndex: 3 },
+]
+const attendanceQuestions: readonly ComprehensionQuestion[] = [
+  { id: 'q1', type: 'factual', prompt: 'What was the initial attendance proposal?', options: ['Strict daily roll call', 'Flexible participation-focused expectations', 'Recorded classes only', 'No attendance policy'], correctOptionIndex: 1 },
+  { id: 'q2', type: 'factual', prompt: 'What situation was raised near the end?', options: ['Faculty promotion rules', 'Laboratory shortages', 'Commuter transportation disruptions', 'Shared grading software'], correctOptionIndex: 2 },
+  { id: 'q3', type: 'direct-relation', prompt: 'Who directly challenged the initial proposal?', options: ['Simon', 'Priya', 'Caleb', 'Nora'], correctOptionIndex: 1 },
+  { id: 'q4', type: 'integrative', prompt: 'Which proposal addressed recordings reducing attendance?', options: ['Use a shared template', 'Require private requests', 'Count transit differently', 'Reserve live time for practice or debate'], correctOptionIndex: 3 },
+  { id: 'q5', type: 'integrative', prompt: 'If teams set contingency plans, which concern would remain?', options: ['Power differences in peer agreements', 'Recorded mini-lectures', 'Commuting and participation', 'Course explanations'], correctOptionIndex: 0 },
+  { id: 'q6', type: 'integrative', prompt: 'What is the check-in branch tension?', options: ['Recovery plans versus live debate', 'Recordings versus transport', 'Templates versus group projects', 'Early support versus surveillance'], correctOptionIndex: 3 },
+  { id: 'q7', type: 'integrative', prompt: 'What did the final proposal combine?', options: ['Roll call and recordings', 'Private requests and check-ins', 'Recovery support and course-specific reasons for presence', 'Peer agreements and staff workload'], correctOptionIndex: 2 },
+  { id: 'q8', type: 'global-reconstruction', prompt: 'Which sequence best describes the discussion?', options: ['Flexibility → recordings → check-ins → group projects → commuting', 'Commuting → recordings → flexibility → check-ins', 'Group projects → templates → recordings → commuting', 'Check-ins → attendance bans → laboratories → recordings'], correctOptionIndex: 0 },
+]
+const peerQuestions: readonly ComprehensionQuestion[] = [
+  { id: 'q1', type: 'factual', prompt: 'What was the initial peer-grading proposal?', options: ['Remove group grades', 'Use peer feedback with criteria and context', 'Grade popularity directly', 'Require identical roles'], correctOptionIndex: 1 },
+  { id: 'q2', type: 'factual', prompt: 'Which issue was raised near the end?', options: ['Students with jobs and asynchronous work', 'File storage costs', 'Attendance in lectures', 'University AI licenses'], correctOptionIndex: 0 },
+  { id: 'q3', type: 'direct-relation', prompt: 'Who directly challenged the initial proposal?', options: ['Rosa', 'Daniel', 'Aisha', 'Martin'], correctOptionIndex: 2 },
+  { id: 'q4', type: 'integrative', prompt: 'Which proposal addressed conflict in midpoint feedback?', options: ['Use shared folders', 'Offer a feedback workshop', 'Add meetings to logs', 'Use private reflections'], correctOptionIndex: 1 },
+  { id: 'q5', type: 'integrative', prompt: 'If teams used shared folders, which concern would remain?', options: ['Whether roles offer meaningful work', 'Whether feedback happens early', 'Whether logs record meetings', 'Whether reflections are private'], correctOptionIndex: 0 },
+  { id: 'q6', type: 'integrative', prompt: 'What is the reflection branch tension?', options: ['Meetings and jobs versus grading', 'Folders and feedback language', 'Popularity and role plans', 'Candor and repair versus added workload'], correctOptionIndex: 3 },
+  { id: 'q7', type: 'integrative', prompt: 'What did the final proposal combine?', options: ['Popularity with grades', 'Workshops with strict roles', 'Reflections with attendance checks', 'Asynchronous recognition with quiet-coordination explanations'], correctOptionIndex: 3 },
+  { id: 'q8', type: 'global-reconstruction', prompt: 'Which sequence best describes the discussion?', options: ['Shared ownership → jobs → feedback → reflections', 'Reflections → logs → jobs → midpoint feedback', 'Peer criteria → midpoint feedback → shared ownership → reflections → asynchronous work', 'Jobs → peer criteria → ownership → feedback'], correctOptionIndex: 2 },
+]
+
+export const EXPERIMENT_DISCUSSIONS: readonly ExperimentDiscussion[] = [
+  buildDiscussion('education', 'AI in university education', ['Maya', 'Owen', 'Leah', 'Victor'], educationBodies, educationQuestions),
+  buildDiscussion('attendance', 'Mandatory attendance policies', ['Nora', 'Caleb', 'Priya', 'Simon'], attendanceBodies, attendanceQuestions),
+  buildDiscussion('peer-grading', 'Peer grading in group projects', ['Rosa', 'Daniel', 'Aisha', 'Martin'], peerBodies, peerQuestions),
+]
+export function getExperimentDiscussion(id: string): ExperimentDiscussion { const discussion = EXPERIMENT_DISCUSSIONS.find((item) => item.id === id); if (!discussion) throw new Error(`Unknown experiment discussion: ${id}`); return discussion }

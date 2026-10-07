@@ -65,6 +65,13 @@ export const appStyles = `
 
   /* Messaging */
   .chat-shell { height: 100svh; display: flex; flex-direction: column; overflow: hidden; background: #f7f9fc; color: var(--navy); }
+  .chat-shell--research .discussion-header { grid-template-columns: 3rem 1fr 3rem; }
+  .chat-shell--research .discussion-header__identity { justify-content: flex-start; }
+  .chat-shell--research .chat-workspace { justify-content: center; overflow: hidden; }
+  .chat-shell--research .chat-main { flex: 0 1 52rem; width: min(100%,52rem); margin: 0; }
+  .chat-shell--research .chat-workspace--with-map .chat-main { flex: 1 1 52rem; }
+  .chat-shell--research .conversation-map { flex: 0 0 clamp(21rem,27vw,24rem); animation: none; }
+  .chat-shell--research .conversation-map__viewport { padding: .5rem 0; }
   .discussion-header { flex: 0 0 auto; min-height: 4.75rem; display: grid; grid-template-columns: 3rem 1fr auto; align-items: center; padding: .7rem clamp(1rem,4vw,2rem); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); z-index: 2; }
   .discussion-header__identity { display: flex; align-items: center; justify-content: center; gap: .7rem; }
   .discussion-header__title { margin: 0; color: var(--navy); font-size: 1rem; letter-spacing: -.02em; }
@@ -167,6 +174,11 @@ export const appStyles = `
   .reply-preview button:hover { background: #dbeafe; color: var(--blue); }
   .send-button { background: var(--blue); color: #fff; font-size: 1.1rem; font-weight: 800; }
   .send-button:disabled { background: #cbd5e1; cursor: default; }
+  .research-composer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--line); background: #fff; padding: .85rem 1.25rem max(.85rem,env(safe-area-inset-bottom)); }
+  .research-composer p { margin: 0; color: #64748b; font-size: .73rem; line-height: 1.4; }
+  .research-composer button, .study-primary { border: 0; border-radius: .7rem; padding: .78rem 1rem; background: var(--blue); color: #fff; font-weight: 750; white-space: nowrap; }
+  .research-composer button:hover, .study-primary:hover { background: var(--blue-dark); }
+  .research-preview-banner { position: fixed; top: .75rem; left: 50%; z-index: 10; padding: .4rem .7rem; border-radius: 2rem; background: #1e3a8a; color: #fff; font-size: .68rem; font-weight: 750; transform: translateX(-50%); }
   .conversation-map { flex: 0 0 clamp(20rem,32vw,28rem); min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: #fff; animation: map-pane-in .2s ease both; }
   @keyframes map-pane-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
   .conversation-map__header { padding: 1rem 1rem .75rem; border-bottom: 1px solid #f1f5f9; }
@@ -194,6 +206,44 @@ export const appStyles = `
   .conversation-map__node strong { display: -webkit-box; overflow: hidden; color: #334155; font-size: .67rem; font-weight: 650; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .conversation-map__node small { color: #64748b; font-size: .58rem; }
   .conversation-map__hint { margin: 0; padding: .75rem 1rem; border-top: 1px solid var(--line); color: #64748b; font-size: .68rem; line-height: 1.4; }
+
+  /* Research flow */
+  .study-page { min-height: 100svh; display: grid; place-items: center; padding: 2rem 1rem; background: radial-gradient(circle at 50% 0%, #eff6ff 0, #fff 38rem); color: var(--navy); }
+  .study-card { width: min(100%,48rem); padding: clamp(1.5rem,5vw,3rem); border: 1px solid #dbeafe; border-radius: 1.25rem; background: rgba(255,255,255,.95); box-shadow: 0 20px 55px rgba(30,64,175,.12); }
+  .study-card--narrow { width: min(100%,34rem); }
+  .study-card--complete { text-align: center; }
+  .study-kicker { display: block; margin-bottom: .65rem; color: var(--blue); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+  .study-card h1 { margin: 0 0 .7rem; color: var(--navy); font-size: clamp(1.7rem,4vw,2.25rem); letter-spacing: -.035em; }
+  .study-intro { margin: 0; color: #64748b; line-height: 1.6; }
+  .study-note { margin: 1rem 0 0; padding: .8rem 1rem; border-left: 3px solid #60a5fa; background: #eff6ff; color: #475569; font-size: .85rem; line-height: 1.5; }
+  .study-card > .study-primary { margin-top: 1.5rem; }
+  .study-primary:disabled { cursor: not-allowed; opacity: .45; }
+  .study-secondary { margin-top: .75rem; border: 1px solid #bfdbfe; border-radius: .7rem; padding: .75rem 1rem; background: #fff; color: var(--blue); font-weight: 750; }
+  .study-actions, .study-researcher-export { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1.5rem; }
+  .study-actions .study-primary, .study-researcher-export .study-primary { margin: 0; }
+  .study-reset-wrap { position: fixed; right: 1rem; bottom: 1rem; z-index: 20; }
+  .study-reset { margin-top: 1rem; border: 1px solid #bfdbfe; border-radius: .6rem; padding: .55rem .75rem; background: #fff; color: #1d4ed8; font-size: .72rem; font-weight: 750; }
+  .study-reset-wrap .study-reset { margin-top: 0; box-shadow: 0 8px 24px rgba(30,64,175,.12); }
+  .study-textarea { display: grid; gap: .4rem; margin-top: 1.25rem; color: #334155; font-size: .8rem; font-weight: 750; }
+  .study-textarea small { color: #94a3b8; font-weight: 600; }
+  .study-textarea input, .study-textarea textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: .65rem; padding: .75rem; background: #fff; color: var(--navy); }
+  .study-textarea textarea { min-height: 6rem; resize: vertical; }
+  .study-questions, .study-ratings { display: grid; gap: 1.25rem; margin-top: 1.6rem; }
+  .study-question, .study-rating { margin: 0; padding: 0; border: 0; }
+  .study-question legend, .study-rating legend { margin-bottom: .65rem; color: #334155; font-size: .92rem; font-weight: 750; line-height: 1.45; }
+  .study-option { display: flex; align-items: center; gap: .55rem; margin-top: .45rem; padding: .65rem .75rem; border: 1px solid var(--line); border-radius: .65rem; background: #fff; color: #475569; font-size: .84rem; transition: border-color .15s ease, background .15s ease; }
+  .study-option:has(input:focus-visible), .study-option--selected { border-color: #60a5fa; background: #eff6ff; color: #1e3a8a; }
+  .study-option input { accent-color: var(--blue); }
+  .study-scale { display: flex; gap: .4rem; }
+  .study-scale__item { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid #cbd5e1; border-radius: .5rem; color: #64748b; font-size: .75rem; font-weight: 750; }
+  .study-scale__item input { position: absolute; opacity: 0; }
+  .study-scale__item--selected, .study-scale__item:has(input:focus-visible) { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .study-scale__labels { display: flex; justify-content: space-between; margin-top: .35rem; color: #94a3b8; font-size: .65rem; }
+  .study-condition-options { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .study-condition-options .study-option { margin-top: 0; }
+  .study-placeholder { margin-top: 1.4rem; padding: .85rem; border: 1px dashed #93c5fd; border-radius: .7rem; background: #f8fbff; color: #64748b; font-size: .76rem; }
+  .study-export-summary { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin: 1.4rem 0; }
+  .study-export-summary span { padding: .4rem .65rem; border-radius: 2rem; background: #eff6ff; color: #1d4ed8; font-size: .72rem; font-weight: 750; }
 
   /* Visual tree canvas */
   .tree-shell { height: 100svh; display: flex; flex-direction: column; overflow: hidden; background: #f8fafc; color: var(--navy); }
@@ -288,5 +338,11 @@ export const appStyles = `
     .chat-workspace--with-map { display: block; overflow-y: auto; }
     .chat-workspace--with-map .chat-main { height: 68svh; }
     .conversation-map { height: 32svh; border-top: 1px solid var(--line); border-left: 0; }
+    .research-composer { align-items: stretch; flex-direction: column; }
+    .research-composer button { width: 100%; }
+    .chat-shell--research .chat-workspace { overflow-y: auto; }
+    .chat-shell--research .conversation-map { flex-basis: 22rem; }
+    .study-scale { justify-content: space-between; gap: .2rem; }
+    .study-scale__item { width: 1.85rem; }
   }
 `

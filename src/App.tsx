@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { appStyles } from './appStyles'
 import { ChatView } from './components/ChatView'
+import { ExperimentApp } from './experiment/ExperimentApp'
 import { LandingPage } from './components/LandingPage'
 import { TreeView } from './components/TreeView'
 import {
@@ -16,6 +17,11 @@ import {
 } from './types/discussion'
 
 function App() {
+  const query = new URLSearchParams(window.location.search)
+  const previewValue = query.get('previewCondition')
+  const previewCondition = previewValue === 'A' || previewValue === 'B' || previewValue === 'C'
+    ? previewValue
+    : null
   const [screen, setScreen] = useState<Screen>('landing')
   const [returnScreen, setReturnScreen] =
     useState<DiscussionReturnScreen>('landing')
@@ -143,6 +149,10 @@ function App() {
     },
     [],
   )
+
+  if (query.get('experiment') === '1' || previewCondition) {
+    return <ExperimentApp previewCondition={previewCondition} />
+  }
 
   return (
     <>

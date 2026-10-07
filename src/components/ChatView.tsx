@@ -27,6 +27,12 @@ type ChatViewProps = {
   onSelectMessage: (messageId: string, source: 'chat' | 'map') => void
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void
   onBack: () => void
+  showReplyContext?: boolean
+  showRelationLabels?: boolean
+  researchReadOnly?: boolean
+  onContinueToQuestions?: () => void
+  researchContinueLabel?: string
+  researchLayout?: boolean
 }
 
 const REACTIONS: readonly ReactionEmoji[] = ['👍', '💡', '❓', '❤️']
@@ -57,8 +63,10 @@ function initials(name: string): string {
 
 function formatMessageTime(createdAt: number): string {
   if (createdAt < 1_000_000_000_000) {
-    const minutes = 41 + Math.max(0, Math.floor((createdAt - 1_000) / 1_000))
-    return `9:${String(minutes).padStart(2, '0')} AM`
+    const totalMinutes = 9 * 60 + 40 + Math.max(0, Math.floor((createdAt - 1_000) / 60_000))
+    const hour = Math.floor(totalMinutes / 60)
+    const minute = totalMinutes % 60
+    return `${hour > 12 ? hour - 12 : hour}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`
   }
 
   const date = new Date(createdAt)
@@ -97,6 +105,12 @@ export function ChatView({
   onSelectMessage,
   onSendMessage,
   onBack,
+  showReplyContext = true,
+  showRelationLabels = true,
+  researchReadOnly = false,
+  onContinueToQuestions,
+  researchContinueLabel = 'Continue to questions',
+  researchLayout = false,
 }: ChatViewProps) {
   const threadEndRef = useRef<HTMLDivElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
@@ -211,30 +225,32 @@ export function ChatView({
   }
 
   return (
-    <div className="chat-shell">
+    <div className={`chat-shell${researchLayout ? ' chat-shell--research' : ''}`}>
       <header className="discussion-header">
-        <button type="button" className="icon-button" onClick={onBack} aria-label="Go back" title="Go back">
+        {!researchReadOnly ? <button type="button" className="icon-button" onClick={onBack} aria-label="Go back" title="Go back">
           <span aria-hidden="true">←</span>
-        </button>
+        </button> : <span aria-hidden="true" />}
         <div className="discussion-header__identity">
           <div className="discussion-header__mark" aria-hidden="true">C</div>
           <div>
-            <h1 className="discussion-header__title">CogniWeave</h1>
-            <p className="discussion-header__status">
+            <h1 className="discussion-header__title">{researchReadOnly ? 'Read this discussion' : 'CogniWeave'}</h1>
+            {!researchReadOnly && <p className="discussion-header__status">
               <span className="status-dot" /> 4 participants online
-            </p>
+            </p>}
           </div>
         </div>
-        <button
-          type="button"
-          className="map-toggle"
-          onClick={onToggleMap}
-          aria-pressed={isMapVisible}
-          aria-label={isMapVisible ? 'Hide conversation map' : 'Show conversation map'}
-          title={isMapVisible ? 'Hide map' : 'Show map'}
-        >
-          <span aria-hidden="true">⌘</span> {isMapVisible ? 'Hide map' : 'Show map'}
-        </button>
+        {!researchReadOnly && (
+          <button
+            type="button"
+            className="map-toggle"
+            onClick={onToggleMap}
+            aria-pressed={isMapVisible}
+            aria-label={isMapVisible ? 'Hide conversation map' : 'Show conversation map'}
+            title={isMapVisible ? 'Hide map' : 'Show map'}
+          >
+            <span aria-hidden="true">⌘</span> {isMapVisible ? 'Hide map' : 'Show map'}
+          </button>
+        )}
       </header>
 
       <div className={`chat-workspace${isMapVisible ? ' chat-workspace--with-map' : ''}`}>
@@ -242,7 +258,7 @@ export function ChatView({
         <div className="chat-topic">
           <span className="chat-topic__eyebrow">Today’s discussion</span>
           <h2>{topic}</h2>
-          <p>Share a thought, build on an idea, or challenge the group.</p>
+          <p>{researchReadOnly ? 'Review the discussion below and try to understand the ideas and how they relate.' : 'Share a thought, build on an idea, or challenge the group.'}</p>
         </div>
 
         <div className="chat-thread" ref={threadRef} role="log" aria-live="polite" aria-label="Discussion messages">
@@ -278,7 +294,7 @@ export function ChatView({
                     <time dateTime={new Date(message.createdAt).toISOString()}>{formatMessageTime(message.createdAt)}</time>
                   </div>}
                   <div className="chat-message__bubble-wrap" data-chat-popover-open={messageReactionTarget === message.id}>
-                    <div className="chat-message__actions">
+                    {!researchReadOnly && <div className="chat-message__actions">
                       <button type="button" onClick={() => startReply(message.id)} aria-label={`Reply to ${message.author}`} title={`Reply to ${message.author}`}>↩</button>
                       <button
                         type="button"
@@ -287,8 +303,8 @@ export function ChatView({
                         title="Add reaction"
                         aria-expanded={messageReactionTarget === message.id}
                       >☺</button>
-                    </div>
-                    {messageReactionTarget === message.id && (
+                    </div>}
+                    {!researchReadOnly && messageReactionTarget === message.id && (
                       <div className="reaction-picker reaction-picker--message" role="menu" aria-label="Choose a reaction">
                         {REACTIONS.map((reaction) => (
                           <button
@@ -310,12 +326,12 @@ export function ChatView({
                       aria-label={`Locate ${message.author}'s message in the conversation map`}
                       title={isMapVisible ? 'Locate in map' : 'Message selected'}
                     >
-                      {quotedMessage && (
+                      {showReplyContext && quotedMessage && (
                         <div className="reply-quote">
                           <strong>
-                            <span className={`reply-relation reply-relation--${messageReplyRelation}`}>
+                            {showRelationLabels && <span className={`reply-relation reply-relation--${messageReplyRelation}`}>
                               {RELATION_LABELS[messageReplyRelation]}
-                            </span>
+                            </span>}
                             Replying to {quotedMessage.author}
                           </strong>
                           <span>{quotedMessage.body}</span>
@@ -324,7 +340,7 @@ export function ChatView({
                       <p>{message.body}</p>
                     </button>
                   </div>
-                  {selectedReaction && (
+                  {!researchReadOnly && selectedReaction && (
                     <div className="message-reactions">
                       <button
                         type="button"
@@ -351,7 +367,7 @@ export function ChatView({
           <div ref={threadEndRef} />
         </div>
 
-      <form className="chat-composer" onSubmit={handleSubmit}>
+      {!researchReadOnly ? <form className="chat-composer" onSubmit={handleSubmit}>
         {replyTarget && (
           <div className="reply-preview">
             <div className="reply-preview__content">
@@ -416,7 +432,12 @@ export function ChatView({
             <span aria-hidden="true">↑</span>
           </button>
         </div>
-      </form>
+      </form> : (
+        <div className="research-composer">
+          <p>Take the time you need before continuing.</p>
+          <button type="button" onClick={onContinueToQuestions}>{researchContinueLabel} <span aria-hidden="true">→</span></button>
+        </div>
+      )}
       </main>
       {isMapVisible && (
         <ConversationMap

@@ -52,7 +52,8 @@ export function ConversationMap({
     const roots: Contribution[] = []
 
     messages.forEach((message) => {
-      const parentId = getMessageParentId(message, messagesById)
+      const candidateParentId = getMessageParentId(message, messagesById)
+      const parentId = candidateParentId === message.id ? null : candidateParentId
       parentIds.set(message.id, parentId)
       if (!parentId) {
         roots.push(message)
@@ -95,6 +96,16 @@ export function ConversationMap({
       const rootWidth = getClusterWidth(root)
       visit(root, 0, rootLeft)
       rootLeft += rootWidth + NODE_X_GAP * 2
+    })
+
+    // A malformed imported discussion must not blank the Map. Keep any node that
+    // could not be reached from a root independent rather than dereferencing an
+    // absent layout position during rendering.
+    messages.forEach((message) => {
+      if (positions[message.id]) return
+      parentIds.set(message.id, null)
+      positions[message.id] = { x: rootLeft, y: 28 }
+      rootLeft += NODE_WIDTH + NODE_X_GAP * 2
     })
     const maxDepth = Object.values(positions).reduce(
       (deepest, point) => Math.max(deepest, point.y),
@@ -163,7 +174,7 @@ export function ConversationMap({
             })}
           </svg>
           {messages.map((message) => {
-            const point = positions[message.id]
+            const point = positions[message.id] ?? { x: 28, y: 28 }
             return (
               <button
                 type="button"
