@@ -8,9 +8,23 @@ CogniWeave compares alternative structures for viewing the same group conversati
 
 ## Experimental conditions
 
-- **Condition A — Baseline:** Plain chronological chat with no reply or relation cues and no global map.
-- **Condition B — Local cues:** Chronological chat with local reply context and relation cues, but no global map.
-- **Condition C — Local + global structure:** The same local cues as Condition B, plus a read-only grouped relational map for navigating branches of the discussion.
+### Condition A — Baseline
+
+Plain chronological chat with no relational cues or global map.
+
+![Condition A baseline chat](screenshots/condition-a.png)
+
+### Condition B — Local relational cues
+
+Chronological chat with reply context and relation labels.
+
+![Condition B local relational cues](screenshots/condition-b.png)
+
+### Condition C — Local + global structure
+
+The same local cues plus a grouped discussion map for global structure and navigation.
+
+![Condition C grouped discussion map](screenshots/condition-c.png)
 
 ## Current implementation
 
@@ -39,20 +53,6 @@ Vite prints the local development URL when the server starts (typically `http://
 | --- | --- |
 | Participant experiment | `http://localhost:5173/?experiment=1` |
 | Researcher/demo mode | `http://localhost:5173/?experiment=1&researcher=1` |
-
-## Screenshots
-
-### Condition A — Baseline chronological chat
-
-_Add Condition A screenshot here._
-
-### Condition B — Local reply and relation cues
-
-_Add Condition B screenshot here._
-
-### Condition C — Global relational map
-
-_Add Condition C / Map screenshot here._
 
 ## Status
 
