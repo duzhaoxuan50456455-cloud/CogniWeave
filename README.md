@@ -2,6 +2,16 @@
 
 CogniWeave is a research-driven conversation workspace exploring how different discussion interface structures affect participation, navigation, cognitive load, and idea generation.
 
+## Live Demo
+
+Explore the public interface demo on Vercel. This is **not an active research study**, and no research response data is collected through these links.
+
+| Condition | Interface structure | Demo |
+| --- | --- | --- |
+| A — Baseline | Plain chronological chat without relational cues or a map. | [Open Condition A](https://cogni-weave.vercel.app/?previewCondition=A) |
+| B — Local relational cues | Chronological chat with inline reply context and relation labels, but no global map. | [Open Condition B](https://cogni-weave.vercel.app/?previewCondition=B) |
+| C — Local + global structure | Condition B's local cues plus a grouped discussion map for navigation. | [Open Condition C](https://cogni-weave.vercel.app/?previewCondition=C) |
+
 ## Overview
 
 Complex group conversations often contain several related threads, while chronological chat makes those relationships difficult to trace. CogniWeave is an interactive HCI research prototype that compares progressively more explicit forms of conversational structure to study their effect on navigation and understanding.
@@ -36,17 +46,17 @@ The same local cues as Condition B plus a grouped discussion map for global stru
 - **Experiment workflow:** Participants enter an ID, read instructions, complete three discussion trials, answer comprehension questions, rate each trial, complete background and final questionnaires, and reach an export page. Participant IDs deterministically select counterbalanced condition and topic sequences. Researcher/demo sessions use a fixed **A → B → C** condition order.
 - **Storage, logging, and export:** The active experiment session and interaction events are stored in browser `localStorage`. The event log includes trial, question, rating, chat, and map interactions. At the end of a researcher session, the app can download a JSON record and a CSV trial summary locally.
 
-## Quick Preview
+## Local Preview Routes
 
-Start the local development server first. These are local preview routes—not public hosted demos.
+For local development, start the Vite server first. These `localhost` links are separate from the public demo above.
 
 | View | Local URL |
 | --- | --- |
 | Condition A preview | [http://localhost:5173/?previewCondition=A](http://localhost:5173/?previewCondition=A) |
 | Condition B preview | [http://localhost:5173/?previewCondition=B](http://localhost:5173/?previewCondition=B) |
 | Condition C preview | [http://localhost:5173/?previewCondition=C](http://localhost:5173/?previewCondition=C) |
-| Researcher/demo mode | [http://localhost:5173/?experiment=1&researcher=1](http://localhost:5173/?experiment=1&researcher=1) |
-| Participant experiment | [http://localhost:5173/?experiment=1](http://localhost:5173/?experiment=1) |
+
+The research-only `main` branch also includes local participant and researcher experiment entry points. They are intentionally disabled on the public `demo-public` branch.
 
 ## Running Locally
 
