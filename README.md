@@ -2,58 +2,61 @@
 
 CogniWeave is a research-driven conversation workspace exploring how different discussion interface structures affect participation, navigation, cognitive load, and idea generation.
 
-## Research question
+## Overview
 
-CogniWeave compares alternative structures for viewing the same group conversation and studies how those structures affect participants' navigation, participation, and understanding of ideas and their relationships.
+Complex group conversations often contain several related threads, while chronological chat makes those relationships difficult to trace. CogniWeave is an interactive HCI research prototype that compares progressively more explicit forms of conversational structure to study their effect on navigation and understanding.
 
-## Experimental conditions
+The repository includes both a normal product prototype and a read-only, browser-based experiment. The experiment presents the same authored discussions under three interface conditions, followed by comprehension questions, ratings, and questionnaires.
 
-### Condition A — Baseline
+## Experimental Conditions
 
-Plain chronological chat with no relational cues or global map.
+### Condition A — Baseline chronological chat
+
+Plain chronological chat with no reply context, relation labels, or global map.
 
 ![Condition A baseline chat](screenshots/condition-a.png)
 
 ### Condition B — Local relational cues
 
-Chronological chat with reply context and relation labels.
+Chronological chat with inline reply context and relation labels, but no global map.
 
 ![Condition B local relational cues](screenshots/condition-b.png)
 
 ### Condition C — Local + global structure
 
-The same local cues plus a grouped discussion map for global structure and navigation.
+The same local cues as Condition B plus a grouped discussion map for global structure and navigation.
 
 ![Condition C grouped discussion map](screenshots/condition-c.png)
 
-## Current implementation
+## Technical Implementation
 
-- React, TypeScript, and Vite application.
-- Landing page, mode selection, and a three-question preference quiz for the normal product experience.
-- Messaging workspace with chronological messages, reply context, reactions, keyboard-friendly composer behavior, and a conversation map in the normal product flow.
-- Read-only participant experiment with participant ID setup, instructions, three discussion trials, comprehension questions, ratings, review discussion, background questions, final questionnaire, and researcher export controls.
-- Three authored discussion datasets: AI in university education, mandatory attendance policies, and peer grading in group projects.
-- Condition C grouped map with authored branch titles and compact message labels, parent-child structure, message previews, and Chat ↔ Map locating.
-- Local experiment-session persistence and event logging in browser storage.
-- Participant trial sequences counterbalanced from participant IDs.
-- Researcher/demo sessions use the fixed condition order **A → B → C** while participant counterbalancing remains unchanged.
+- **Interface and navigation:** The normal prototype is built with React, TypeScript, and Vite. It includes a landing flow, mode selection, a three-question preference quiz, a chat workspace with replies and reactions, and an editable discussion-tree canvas.
+- **Condition control:** The experiment reuses the shared `ChatView` component. Condition flags determine whether reply context, relation labels, and the grouped map appear, keeping the discussion content consistent across A, B, and C.
+- **Conversation structure:** Messages retain `replyToId` and `parentId` references. The Condition C map uses an explicit reply reference first, then falls back to the parent reference, to render grouped parent-child branches. Selecting a chat message focuses its map node; selecting a map node opens a compact preview, whose **View in conversation** action locates and highlights the original chat message.
+- **Experiment workflow:** Participants enter an ID, read instructions, complete three discussion trials, answer comprehension questions, rate each trial, complete background and final questionnaires, and reach an export page. Participant IDs deterministically select counterbalanced condition and topic sequences. Researcher/demo sessions use a fixed **A → B → C** condition order.
+- **Storage, logging, and export:** The active experiment session and interaction events are stored in browser `localStorage`. The event log includes trial, question, rating, chat, and map interactions. At the end of a researcher session, the app can download a JSON record and a CSV trial summary locally.
 
-## Local setup
+## Quick Preview
+
+Start the local development server first. These are local preview routes—not public hosted demos.
+
+| View | Local URL |
+| --- | --- |
+| Condition A preview | [http://localhost:5173/?previewCondition=A](http://localhost:5173/?previewCondition=A) |
+| Condition B preview | [http://localhost:5173/?previewCondition=B](http://localhost:5173/?previewCondition=B) |
+| Condition C preview | [http://localhost:5173/?previewCondition=C](http://localhost:5173/?previewCondition=C) |
+| Researcher/demo mode | [http://localhost:5173/?experiment=1&researcher=1](http://localhost:5173/?experiment=1&researcher=1) |
+| Participant experiment | [http://localhost:5173/?experiment=1](http://localhost:5173/?experiment=1) |
+
+## Running Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Vite prints the local development URL when the server starts (typically `http://localhost:5173/`).
+Vite prints the local URL when the server starts, typically `http://localhost:5173/`.
 
-## Experiment modes
+## Research Status and Limitations
 
-| Mode | URL |
-| --- | --- |
-| Participant experiment | `http://localhost:5173/?experiment=1` |
-| Researcher/demo mode | `http://localhost:5173/?experiment=1&researcher=1` |
-
-## Status
-
-CogniWeave is an active HCI research prototype.
+CogniWeave is an active HCI research prototype, not a production collaboration service. Experiment sessions, event logs, and exports remain in the participant's browser; there is no server-side database, shared real-time discussion, or centralized data collection in this repository. The supplied discussions are authored study stimuli rather than live participant conversations.
