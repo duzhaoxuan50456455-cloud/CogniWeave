@@ -156,7 +156,7 @@ export function ExperimentApp({ previewCondition }: ExperimentAppProps) {
     return (
       <>
         <style>{appStyles}</style>
-        <div className="research-preview-banner">Developer preview · condition {previewCondition}</div>
+        <div className="research-preview-banner">Public interface demo — not a research study. No response data is collected.</div>
         {previewPhase === 'discussion' && <ExperimentWorkspace
           trial={trial}
           discussion={discussion}
